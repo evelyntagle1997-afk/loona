@@ -48,9 +48,16 @@ async function heard(text) {
   const t = text.trim(); if (!t) return;
   const m = t.match(WAKE);
   if (!m && Date.now() > follow) return;
-  const cmd = m ? t.slice(m.index + m[0].length).trim() : t;
-  if (!cmd) { follow = Date.now() + 8000; return speak(['¿Qué?', 'Ajá.', '¿Y ahora qué?', 'Habla.'][Math.floor(Math.random() * 4)]); }
+  const cmd = (m ? t.slice(m.index + m[0].length).trim() : t) || '(Eve te llamó por tu nombre. Contesta corto y seco.)';
+  if (!cmd && Date.now() > follow) { follow = Date.now() + 8000; }
   follow = 0;
+  // con la llamada en vivo se conversa fluido; al colgar, Loona vuelve a esperar su nombre
+  const L = await import('./live.js');
+  const eng = engine; engine?.stop(); engine = null;
+  const back = () => { if (on && !engine) { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let off = false; try { off = localStorage.getItem('hfEngine') === 'gemini'; } catch { } if (SR && !off && !/Android/i.test(navigator.userAgent)) startSR(SR); else startVAD(); } };
+  const r = await L.tryLive({ firstText: cmd, onEnd: () => setTimeout(back, 800) });
+  if (r === true) return;
+  back();
   await talk(cmd);
   follow = Date.now() + 8000;   // unos segundos para seguir hablando sin repetir su nombre
 }

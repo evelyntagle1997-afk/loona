@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 57;
+export const APP_VERSION = 58;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -57,9 +57,10 @@ export async function renderHome(app, go) {
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    deco('polaroid', 30.2, 40, 9.2, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
-    deco('corazon', 54.5, 58, 10, 'rotate(-5deg)', 'Dato de medicina para el ENEM', medFact),
-    deco('sello', 65.5, 71, 8.6, 'rotate(8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
+    deco('polaroid', 30, 38.5, 9.6, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
+    deco('corazon', 30.4, 57.5, 7.4, 'rotate(-5deg)', 'Dato de medicina para el ENEM', medFact),
+    deco('sello', 24.4, 41, 5.8, 'rotate(8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
+    portada(),
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
     hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
     hot('ag-key', 39.6, 61.5, 4.2, 12, 'Llave: Loona te escucha siempre (manos libres)', () => import('./handsfree.js').then(m => m.toggle())),
@@ -155,6 +156,27 @@ function initPocket(pocket) {
   draw();
 }
 
+// portada del índice: ilustración original o una imagen tuya
+function portada() {
+  const get = () => { try { return localStorage.getItem('portadaImg'); } catch { return null; } };
+  const own = get();
+  const img = h('img', { src: own || 'img/portada.webp', alt: '', draggable: false });
+  const el = h('button', { class: 'ag-z ag-portada' + (own ? ' propia' : ''), style: { left: '55.5%', top: '45%', width: '16%', height: '39%' }, 'aria-label': 'Portada del índice: cambiar imagen', title: 'Portada: toca para poner tu propia imagen' }, img);
+  el.addEventListener('click', e => {
+    e.stopPropagation();
+    const m = modal({ title: 'Portada del índice', body: h('p', {}, 'Puedes poner una imagen tuya (se guarda solo en tu agenda) o dejar la ilustración de Loona.'), actions: [
+      { label: 'Ilustración original', onclick: () => { try { localStorage.removeItem('portadaImg'); } catch { } img.src = 'img/portada.webp'; el.classList.remove('propia'); } },
+      { label: 'Poner mi imagen', primary: true, onclick: async () => {
+        const f = await pickFile('image/*'); if (!f) return;
+        const bm = await createImageBitmap(f), sc = Math.min(1, 700 / Math.max(bm.width, bm.height));
+        const c = document.createElement('canvas'); c.width = bm.width * sc; c.height = bm.height * sc; c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
+        const url = c.toDataURL('image/webp', .85);
+        try { localStorage.setItem('portadaImg', url); } catch { return toast('La imagen es muy grande'); }
+        img.src = url; el.classList.add('propia');
+      } }] });
+  });
+  return el;
+}
 // recuerdos pegados en la agenda (fotos reales); cada uno hace algo
 function deco(name, l, t, w, rot, label, fn) {
   return h('button', { class: 'ag-z ag-deco ag-hot ag-' + name, style: { left: l + '%', top: t + '%', width: w + '%', transform: rot }, 'aria-label': label, title: label, 'data-tip': label.split(':').pop().trim(), onclick: e => { e.stopPropagation(); fn(); } },

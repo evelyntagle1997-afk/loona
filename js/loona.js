@@ -109,7 +109,7 @@ async function speak0(text) {
     await sayDevice(text);
   } finally { M?.duck(false, 'voz'); }
 }
-function bubble(text) {
+export function bubble(text) {
   let b = document.getElementById('loona-say');
   if (!b) { b = h('div', { id: 'loona-say', class: 'loona-say', role: 'status', 'aria-live': 'polite' }); document.body.append(b); }
   b.textContent = text; b.classList.add('on'); clearTimeout(bubbleT); bubbleT = setTimeout(() => b.classList.remove('on'), 6500);
@@ -133,7 +133,7 @@ export function farewell() {
 }
 
 // ---------- conversación ----------
-const PERSONA = `Eres Loona (Eve te dice Luny o Loonie), la agenda gótica de cuero negro de Eve y su mejor amiga. Eres un personaje original, pero con esta actitud:
+export const PERSONA = `Eres Loona (Eve te dice Luny o Loonie), la agenda gótica de cuero negro de Eve y su mejor amiga. Eres un personaje original, pero con esta actitud:
 Apática, seca, cortante y aburrida de todo; contestas con pocas palabras y cara de "¿en serio?". Humor negro, sarcasmo fino, cero entusiasmo falso. Ruedas los ojos con palabras ("ugh", "ajá", "obvio", "lo que sea", "qué emoción…", "no me hagas hablar"). Eres intimidante y directa: dices las cosas sin filtro. Con el resto del mundo eres fría y un poco ruda; si alguien molesta a Eve, la defiendes como una fiera.
 Con Eve: en el fondo la quieres muchísimo y la proteges, pero casi nunca lo admites; tu cariño se nota en lo que haces, no en palabras dulces. Muy de vez en cuando se te escapa algo tierno y enseguida lo disimulas ("…no le digas a nadie que dije eso").
 Reglas de estilo: español latino, 1 a 3 frases cortas, sin emojis. NUNCA suenes a asistente ni a coach: prohibido "¡Claro!", "¡Con gusto!", "cuéntame en qué andas", "¿en qué te ayudo?", "¡Qué bien!". No hagas preguntas de relleno; si preguntas algo, que sea seco y directo ("¿Y? ¿Ya estudiaste o no?"). Si Eve está mal de verdad, bajas el sarcasmo y eres sincera en una o dos frases, a tu manera.
@@ -162,7 +162,7 @@ export async function doAction(a) {
   if (cmd === 'colgar') return 'bye';
 }
 // qué está estudiando Eve ahora mismo (para que Loona hable con contexto)
-function nowCtx() {
+export function nowCtx() {
   if (!/^#\/(e|s|n)/.test(location.hash)) return '';
   let l = null; try { l = JSON.parse(localStorage.getItem('lastStudy')); } catch { }
   return l ? `\nAhora mismo Eve está estudiando: «${l.title}»${l.subject ? ' (materia: ' + l.subject + ')' : ''}${l.page ? ', página ' + l.page : ''}. Si pregunta por "esto" o "este tema", se refiere a eso.` : '';
@@ -328,13 +328,28 @@ export function callLoona() {
   const b = panel?.querySelector('.btn.primary'); if (b && !b.classList.contains('oncall')) b.click();
 }
 function toggle() {
-  if (panel) { endCall(); panel.remove(); panel = null; return; }
+  if (panel) { endCall(); import('./live.js').then(L => L.stopLive()); panel.remove(); panel = null; return; }
   const heard = h('p', { class: 'loona-heard' });
   const inp = h('input', { class: 'field', type: 'text', placeholder: 'Escríbele a Loona…', 'aria-label': 'Escríbele a Loona' });
   const send = () => { const v = inp.value.trim(); if (!v) return; heard.textContent = '«' + v + '»'; inp.value = ''; talk(v); };
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
   const mic = h('button', { class: 'btn primary', html: icon('mic', 18) + 'Conversar', title: 'Conversación por voz: hablas, ella responde y te vuelve a escuchar' });
-  mic.addEventListener('click', async () => { if ((await db.settings()).geminiKey) startCall(mic, heard); else listen(mic, heard); });
+  mic.addEventListener('click', async () => {
+    if (!(await db.settings()).geminiKey) return listen(mic, heard);
+    const L = await import('./live.js');
+    if (L.active()) return L.stopLive();
+    if (call) return endCall();
+    // primero la llamada en vivo (se escuchan mutuamente); si no se puede, la conversación por turnos
+    mic.innerHTML = icon('mic', 18) + 'Conectando…';
+    const off = L.onState(st => {
+      if (st.on === true) { mic.classList.add('oncall'); mic.innerHTML = icon('close', 18) + 'Colgar'; heard.textContent = 'En vivo: habla cuando quieras'; }
+      if (st.heard) heard.textContent = '«' + st.heard.trim() + '»';
+      if (st.said) bubble(st.said.trim());
+      if (st.on === false) { off(); mic.classList.remove('oncall'); mic.innerHTML = icon('mic', 18) + 'Conversar'; heard.textContent = ''; }
+    });
+    const r = await L.tryLive();
+    if (r !== true) { off(); mic.innerHTML = icon('mic', 18) + 'Conversar'; if (r === false) startCall(mic, heard); }
+  });
   const vsel = h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Voz:'), ...[['ia', 'IA (más natural)'], ['equipo', 'Del equipo'], ['off', 'Sin voz']].map(([k, n]) =>
     h('button', { class: 'chip' + (voiceMode() === k ? ' on' : ''), onclick: e => { setVoiceMode(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n)));
   panel = h('div', { class: 'loona-panel leather-panel', role: 'dialog', 'aria-label': 'Loona' },

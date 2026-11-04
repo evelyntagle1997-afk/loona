@@ -1400,3 +1400,9 @@ html.lite .ag-vp::before { animation: none; }
 .agenda::before { display: none !important; }
 .agenda .ag-bg { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(180deg, transparent 0, #000 9%, #000 91%, transparent 100%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(180deg, transparent 0, #000 9%, #000 91%, transparent 100%); mask-composite: intersect; }
 .ag-grain { -webkit-mask-image: radial-gradient(75% 75% at 50% 50%, #000 60%, transparent 100%); mask-image: radial-gradient(75% 75% at 50% 50%, #000 60%, transparent 100%); }
+/* v58 portada del índice (ilustración original impresa en el papel vegetal) */
+.ag-portada { z-index: 2; display: grid; place-items: center; padding: 0; cursor: pointer; }
+.ag-portada img { max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; opacity: .78; pointer-events: none; transition: transform .3s var(--ease-out); }
+.ag-portada.propia img { mix-blend-mode: normal; opacity: 1; border-radius: .3cqw; box-shadow: 0 .5cqw 1cqw rgba(0,0,0,.5); border: .35cqw solid #f1ede8; }
+@media (hover: hover) { .ag-portada:hover img { transform: scale(1.02); } }
+.ag-index { max-height: 40%; }
