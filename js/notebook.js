@@ -17,7 +17,7 @@ const PAPERS = [
   { k: 'puntos', name: 'Puntos' }, { k: 'cuadricula', name: 'Cuadrícula' }, { k: 'rayas', name: 'Rayas' },
   { k: 'liso', name: 'Liso' }, { k: 'cornell', name: 'Cornell' },
 ];
-const PAPER_TONES = [{ k: 'negro', c: '#171516' }, { k: 'humo', c: '#2a2829' }, { k: 'crema', c: '#FBF5EC' }, { k: 'blanco', c: '#FFFDF9' }, { k: 'rosa', c: '#F8EDEB' }, { k: 'kraft', c: '#E9D9C2' }];
+const PAPER_TONES = [{ k: 'negro', c: '#081827' }, { k: 'humo', c: '#10243A' }, { k: 'crema', c: '#FBF5EC' }, { k: 'blanco', c: '#FFFDF9' }, { k: 'rosa', c: '#F8EDEB' }, { k: 'kraft', c: '#E9D9C2' }];
 const BLOCKS = [
   { k: 'titulo', name: 'Título con lettering', html: 'Mi tema', w: 520 },
   { k: 'gotico', name: 'Título gótico', html: 'Historia', w: 560 },
@@ -1223,6 +1223,7 @@ export class Notebook {
     const root = h('div', { class: 'sum lay-' + (el.layout || 'dos') + ' tpl-' + tpl + ' th-' + theme });
     root.append(h('i', { class: 'sum-strip l', 'aria-hidden': 'true' }));
     if (tpl === 'poster') root.append(h('i', { class: 'sum-strip r', 'aria-hidden': 'true' }));
+    root.append(h('img', { class: 'sum-hero', src: 'img/hero-' + theme + '.webp', alt: '', draggable: false }));   // ilustración grande del tema
     const sub = this.subject;
     root.style.setProperty('--sc', sub?.coverColor || '#7A2B3A');
     root.style.setProperty('--neo', el.theme ? NEON_TH[el.theme] : neonOf(sub?.name));   // brillo neón: plata por defecto; color solo si el tema lo pide
