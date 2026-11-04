@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 88;
+export const APP_VERSION = 89;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -110,7 +110,7 @@ export async function renderHome(app, go0) {
   const cover = h('div', { class: 'ag-cover init', 'aria-hidden': 'true' },
     h('div', { class: 'agc-front' }, h('span', { class: 'agc-strap' }), h('span', { class: 'agc-name' }, 'Loona'), h('span', { class: 'agc-moon' }), h('span', { class: 'agc-hint' }, 'Toca para abrir')),
     h('div', { class: 'agc-back' }));
-  scene.append(h('div', { class: 'ag-desk', 'aria-hidden': 'true' }), cover);
+  scene.append(h('div', { class: 'ag-desk', 'aria-hidden': 'true' }), h('img', { class: 'ag-dije-out', src: 'img/dije-fuera.webp', alt: '', draggable: false }), cover);
   cover.addEventListener('click', () => openAgenda());
   const vp = h('div', { class: 'ag-vp' }, scene);
   // la agenda espera cerrada hasta que la toques
@@ -351,7 +351,7 @@ export function openAgenda() {
   c.classList.add('unsnap');   // 1) se suelta el broche
   return new Promise(r => setTimeout(() => {
     c.classList.remove('closing', 'shut', 'unsnap', 'init'); c.classList.add('opening');   // 2) gira la tapa
-    sc?.classList.remove('closed'); sc?.classList.add('left');   // las tarjetas ya escritas desde que se abre la tapa
+    setTimeout(() => { sc?.classList.remove('closed'); sc?.classList.add('left'); }, 520);   // el interior aparece cuando la tapa ya pasó la mitad
     setTimeout(() => {
       c.classList.remove('opening'); c.classList.add('open');
       // 3) la primera hoja espera: se pasa cuando tú la tocas

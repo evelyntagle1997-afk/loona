@@ -1616,3 +1616,14 @@ html.lite .ag-vp::before { animation: none; }
 .ag-charm, .ag-medal, .ag-key { z-index: 9 !important; }
 /* v87 sin hojas que giren ni translúcidas */
 .ag-flip, .ag-book, .ag-turned { display: none !important; }
+/* v89 con la agenda cerrada, los dijes cuelgan por fuera del lomo; al abrir se recogen hacia adentro (como un marcapáginas) */
+.ag-dije-out { position: absolute; left: 43.4%; top: 27%; width: 5.4%; height: auto; z-index: 7; pointer-events: none; transform-origin: 55% 2%; opacity: 0;
+  filter: drop-shadow(.25cqw .5cqw .4cqw rgba(0,0,0,.6)); }
+.agenda.closed .ag-dije-out { opacity: 1; transform: rotate(4deg); }
+.agenda:not(.closed) .ag-dije-out { animation: adentro 1.1s cubic-bezier(.45,.05,.3,1) both; }
+@keyframes adentro {
+  0% { opacity: 1; transform: translate(0, 0) rotate(4deg); }
+  45% { opacity: 1; transform: translate(-1.6cqw, 1.2cqw) rotate(-10deg); }
+  100% { opacity: 0; transform: translate(-3.2cqw, 3.6cqw) rotate(2deg) scale(1.15); } }
+.ag-cover.closing ~ .ag-dije-out, .agenda.closed .ag-dije-out { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ag-dije-out { animation: none !important; } }
