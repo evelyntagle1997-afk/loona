@@ -3,9 +3,9 @@
 export const LEVELS = [
   { n: 1, name: 'Título / tema', short: 'Título', color: '#2A2729', soft: 'rgba(42,39,41,.32)' },
   { n: 2, name: 'Definición o idea principal', short: 'Idea principal', color: '#8F8B8E', soft: 'rgba(143,139,142,.42)' },
-  { n: 3, name: 'Dato clave', short: 'Dato clave', color: '#C77A3A', soft: 'rgba(199,122,58,.40)' },
+  { n: 3, name: 'Dato clave', short: 'Dato clave', color: '#55555B', soft: 'rgba(85,85,91,.38)' },
   { n: 4, name: 'Detalle o ejemplo', short: 'Detalle', color: '#BDB8BB', soft: 'rgba(189,184,187,.55)' },
-  { n: 5, name: 'Para repasar', short: 'Repasar', color: '#E6B98A', soft: 'rgba(230,185,138,.50)' },
+  { n: 5, name: 'Para repasar', short: 'Repasar', color: '#C9CED6', soft: 'rgba(201,206,214,.55)' },
 ];
 export const levelOf = n => LEVELS.find(l => l.n === n) || LEVELS[1];
 

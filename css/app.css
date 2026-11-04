@@ -1792,3 +1792,11 @@ html.lite .ag-vp::before { animation: none; }
 /* v97 colores con significado dentro de los resúmenes (solo cuando la explicación los necesita) */
 .sum .sig { color: var(--sig) !important; font-weight: 700; }
 .sum .sig::before { content: ''; display: inline-block; width: .55em; height: .55em; border-radius: 50%; background: var(--sig); margin: 0 .3em .08em 0; vertical-align: middle; }
+/* v98 sin naranja; título con tope de 5 cm y ajustable deslizando */
+.sum .sum-title, .sum .sum-title * { background: none !important; box-shadow: none !important; -webkit-box-decoration-break: initial; }
+.sum .sum-title { font-size: 46px; max-width: 70% !important; overflow-wrap: normal; word-break: normal; hyphens: manual; position: relative; }
+.sum-title-grip { position: absolute; right: -14px; bottom: -6px; width: 18px; height: 18px; border-radius: 50%; cursor: nwse-resize; touch-action: none; opacity: .0; transition: opacity .2s;
+  background: radial-gradient(circle, #e9e9ec 0 3px, transparent 3.5px), rgba(255,255,255,.12); box-shadow: 0 0 0 1px rgba(255,255,255,.4); }
+.sum:hover .sum-title-grip, .sel-frame ~ * .sum-title-grip, .sum-title:focus-within .sum-title-grip { opacity: .9; }
+@media (hover: none) { .sum-title-grip { opacity: .7; width: 24px; height: 24px; } }
+.sum .sum-sec li::before, .sum li.lv1::before, .sum li.lv2::before, .sum li.lv3::before, .sum li.lv4::before, .sum li.lv5::before { color: #C9CED6 !important; }

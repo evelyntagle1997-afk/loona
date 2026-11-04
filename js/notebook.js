@@ -151,6 +151,12 @@ export class Notebook {
     const live = h('canvas', { class: 'nb-live' });
     const front = h('div', { class: 'nb-front' }); // marco de selección (sobre la tinta)
     const catcher = h('div', { class: 'nb-catch' });
+    // la esquina para achicar el título funciona aunque estés con el lápiz
+    catcher.addEventListener('pointerdown', e => {
+      const g = document.elementsFromPoint(e.clientX, e.clientY).find(n => n.classList?.contains('sum-title-grip'));
+      if (!g) return; e.stopImmediatePropagation(); e.preventDefault();
+      g.dispatchEvent(new PointerEvent('pointerdown', { clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, pointerType: e.pointerType, bubbles: true }));
+    }, true);
     inner.append(els);
     wrap.append(inner, ink, live, h('div', { class: 'nb-front-wrap' }, front), catcher,
       h('button', { class: 'pg-menu', title: 'Opciones de la página', 'aria-label': 'Opciones de la página', html: icon('dots', 18), onclick: () => this.pageMenu(pg) }));
@@ -1228,7 +1234,28 @@ export class Notebook {
     root.style.setProperty('--sc', sub?.coverColor || '#7A2B3A');
     root.style.setProperty('--neo', el.theme ? NEON_TH[el.theme] : neonOf(sub?.name));   // brillo neón: plata por defecto; color solo si el tema lo pide
     const tf = el.titleFont || this.nb.titleFont || 'Grenze Gotisch'; ensureFont(tf);
-    if (!el.cont && el.title) { const t = h('div', { class: 'sum-title', 'data-edit': 'title' }, el.title); t.style.fontFamily = `'${tf}', 'Pirata One', serif`; if (el.titleK) t.style.fontSize = `calc(var(--tsz, 56px) * ${el.titleK})`; root.append(t); }
+    if (!el.cont && el.title) {
+      // título: máximo ~5 cm de alto (270 px de hoja); se achica solo y lo puedes ajustar deslizando la esquina
+      const MAXH = 270, base = 46;
+      const t = h('div', { class: 'sum-title', 'data-edit': 'title' }, el.title);
+      t.style.fontFamily = `'${tf}', 'Pirata One', serif`;
+      const setK = k => { t.style.setProperty('font-size', Math.round(base * k) + 'px', 'important'); };
+      setK(el.titleK || 1); root.append(t);
+      const fit = () => { if (!t.isConnected) return; let k = el.titleK || 1; while (t.offsetHeight > MAXH && k > .3) { k *= .9; setK(k); } };
+      requestAnimationFrame(() => requestAnimationFrame(fit));
+      if (pg) {
+        const grip = h('span', { class: 'sum-title-grip', title: 'Desliza para agrandar o achicar el título', 'aria-label': 'Tamaño del título' });
+        t.append(grip);
+        let st = null;
+        grip.addEventListener('pointerdown', e => {
+          e.preventDefault(); e.stopPropagation();
+          const st = { y: e.clientY, x: e.clientX, k: parseFloat(t.style.fontSize) / base };
+          const move = ev => { ev.preventDefault(); ev.stopPropagation(); const d = ((ev.clientY - st.y) + (ev.clientX - st.x)) / (this.scale || 1); let k = clamp(st.k * (1 + d / 160), .3, 1.6); setK(k); if (t.offsetHeight > MAXH) setK(st.k); };
+          const up = ev => { ev.stopPropagation(); removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); this.snapshot(pg); el.titleK = +(parseFloat(t.style.fontSize) / base).toFixed(2); this.commit(pg); };
+          addEventListener('pointermove', move, true); addEventListener('pointerup', up, true);
+        });
+      }
+    }
     else if (el.cont && el.title) root.append(h('div', { class: 'sum-cont' }, el.title + ' (continúa)'));
     const body = h('div', { class: 'sum-body' });
     for (const g of grouped(el.items)) {
