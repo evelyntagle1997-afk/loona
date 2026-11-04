@@ -1322,3 +1322,6 @@ button.ag-z { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .pk-b { border: 0; border-radius: 999px; padding: 6px 12px; min-width: 34px; min-height: 30px; font: 600 13px system-ui, sans-serif; color: #111; background: linear-gradient(#fff, #d9d6d8); box-shadow: 0 2px 6px rgba(0,0,0,.5); cursor: pointer; }
 .pk-b.ok { background: linear-gradient(#f2b45a, #d48a2c); }
 .pk-b:active { transform: scale(.95); }
+.loona-panel .btn.oncall { background: linear-gradient(#f2b45a, #c97f24) !important; color: #111 !important; animation: callpulse 1.6s ease-in-out infinite; }
+@keyframes callpulse { 50% { box-shadow: 0 0 0 6px rgba(242,180,90,.25); } }
+@media (prefers-reduced-motion: reduce) { .loona-panel .btn.oncall { animation: none; } }

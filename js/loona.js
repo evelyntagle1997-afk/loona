@@ -68,6 +68,7 @@ async function sayAI(s, text) {
 }
 let bubbleT;
 export async function speak(text) {
+  if (!text) return;
   bubble(text);
   const mode = voiceMode(); if (mode === 'off') return;
   const s = await db.settings();
@@ -132,9 +133,38 @@ async function talkAudio(blob, heard) {
     const ans = ((out.match(/LOONA:\s*([\s\S]*)/i) || [])[1] || out).trim();
     heard.textContent = dijo ? '«' + dijo + '»' : '';
     chat.push({ role: 'user', parts: [{ text: dijo || '(audio)' }] }, { role: 'model', parts: [{ text: ans }] });
-    return speak(ans || 'Mm. No te entendí. ¿Otra vez?');
-  } catch (e) { heard.textContent = ''; return speak(e.message); }
+    await speak(ans || 'Mm. No te entendí. ¿Otra vez?');
+    return /\b(adi[oó]s|chau|chao|bye|nos vemos|hasta luego|cuelgo|colgar)\b/i.test(dijo) ? 'bye' : 'ok';
+  } catch (e) { heard.textContent = ''; await speak(e.message); return 'error'; }
 }
+// ---------- llamada: conversación seguida, como con una amiga ----------
+// Tú hablas → Loona responde con voz → vuelve a escucharte sola. Cuelgas con el botón o diciendo "chau".
+let call = null;
+function startCall(btn, heard) {
+  if (call) return endCall();
+  let silences = 0;
+  call = {
+    btn, heard,
+    next(r) {
+      if (!call) return;
+      if (r === 'bye' || r === 'error') return endCall(r === 'bye' ? null : '');
+      if (r === 'silence') { silences++; if (silences >= 2) return endCall('¿Me dejaste hablando sola? Ugh. Cuando quieras, aquí estoy.');
+        return speak(silences === 1 ? '¿Sigues ahí, Eve?' : '').then(() => call && recordAndTalk(btn, heard)); }
+      silences = 0; setTimeout(() => call && recordAndTalk(btn, heard), 250);
+    },
+  };
+  btn.classList.add('oncall'); btn.innerHTML = icon('close', 18) + 'Colgar';
+  const hr = new Date().getHours();
+  speak(['¿Qué pasó, Eve? Te escucho.', 'Aquí estoy. Cuéntame.', hr >= 19 ? '¿Tú, despierta a esta hora? Dime.' : 'Hola, Eve. ¿Qué me cuentas?'][Math.floor(Math.random() * 3)])
+    .then(() => call && recordAndTalk(btn, heard));
+}
+function endCall(msg) {
+  const c = call; call = null; if (!c) return;
+  recNow?.stop();
+  c.btn.classList.remove('oncall', 'live'); c.btn.innerHTML = icon('mic', 18) + 'Conversar';
+  if (msg) speak(msg);
+}
+
 // graba hasta que te quedes callada 1,5 s (o toques otra vez el botón)
 let recNow = null;
 async function recordAndTalk(btn, heard) {
@@ -152,14 +182,14 @@ async function recordAndTalk(btn, heard) {
     if (mr.state !== 'recording') return;
     an.getFloatTimeDomainData(buf); let sum = 0; for (const v of buf) sum += v * v; const rms = Math.sqrt(sum / buf.length);
     if (rms > .02) { spoke = true; quiet = 0; } else quiet += 120;
-    if ((spoke && quiet > 1500) || Date.now() - t0 > 30000 || (!spoke && Date.now() - t0 > 8000)) return mr.stop();
+    if ((spoke && quiet > 1500) || Date.now() - t0 > 45000 || (!spoke && Date.now() - t0 > (call ? 12000 : 8000))) return mr.stop();
     setTimeout(loop, 120);
   };
   recNow = mr; btn.classList.add('live'); heard.textContent = 'Te escucho… (toca otra vez para terminar)';
   mr.onstop = () => {
     recNow = null; btn.classList.remove('live'); stream.getTracks().forEach(t => t.stop()); ac.close();
-    if (!spoke) { heard.textContent = ''; return toast('No escuché nada. Acércate al micrófono y vuelve a intentar.', 3000); }
-    talkAudio(new Blob(chunks, { type: mr.mimeType || mt || 'audio/webm' }), heard);
+    if (!spoke) { heard.textContent = ''; if (!call) toast('No escuché nada. Acércate al micrófono y vuelve a intentar.', 3000); return call?.next('silence'); }
+    talkAudio(new Blob(chunks, { type: mr.mimeType || mt || 'audio/webm' }), heard).then(r => call?.next(r));
   };
   mr.start(250); loop();
 }
@@ -181,13 +211,13 @@ export function mountLoona() {
   try { const p = JSON.parse(localStorage.getItem('loonaFab')); if (p) Object.assign(fab.style, { left: p.l, top: p.t, right: 'auto', bottom: 'auto' }); } catch { }
 }
 function toggle() {
-  if (panel) { panel.remove(); panel = null; return; }
+  if (panel) { endCall(); panel.remove(); panel = null; return; }
   const heard = h('p', { class: 'loona-heard' });
   const inp = h('input', { class: 'field', type: 'text', placeholder: 'Escríbele a Loona…', 'aria-label': 'Escríbele a Loona' });
   const send = () => { const v = inp.value.trim(); if (!v) return; heard.textContent = '«' + v + '»'; inp.value = ''; talk(v); };
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
-  const mic = h('button', { class: 'btn primary', html: icon('mic', 18) + 'Hablar' });
-  mic.addEventListener('click', () => listen(mic, heard));
+  const mic = h('button', { class: 'btn primary', html: icon('mic', 18) + 'Conversar', title: 'Conversación por voz: hablas, ella responde y te vuelve a escuchar' });
+  mic.addEventListener('click', async () => { if ((await db.settings()).geminiKey) startCall(mic, heard); else listen(mic, heard); });
   const vsel = h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Voz:'), ...[['ia', 'IA (más natural)'], ['equipo', 'Del equipo'], ['off', 'Sin voz']].map(([k, n]) =>
     h('button', { class: 'chip' + (voiceMode() === k ? ' on' : ''), onclick: e => { setVoiceMode(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n)));
   panel = h('div', { class: 'loona-panel leather-panel', role: 'dialog', 'aria-label': 'Loona' },
