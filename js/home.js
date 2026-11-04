@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 52;
+export const APP_VERSION = 53;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -57,7 +57,7 @@ export async function renderHome(app, go) {
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    deco('polaroid', 30.2, 40, 9.2, 'rotate(7deg)', 'Una frase de Loona', () => import('./loona.js').then(L => L.speak(QUOTES[Math.floor(Math.random() * QUOTES.length)]))),
+    deco('polaroid', 30.2, 40, 9.2, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
     deco('corazon', 54.5, 58, 10, 'rotate(-5deg)', 'Dato de medicina para el ENEM', medFact),
     deco('sello', 65.5, 71, 8.6, 'rotate(8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
@@ -155,6 +155,13 @@ function initPocket(pocket) {
 function deco(name, l, t, w, rot, label, fn) {
   return h('button', { class: 'ag-z ag-deco ag-hot ag-' + name, style: { left: l + '%', top: t + '%', width: w + '%', transform: rot }, 'aria-label': label, title: label, 'data-tip': label.split(':').pop().trim(), onclick: e => { e.stopPropagation(); fn(); } },
     h('img', { src: 'img/deco-' + name + '.webp', alt: '', draggable: false, loading: 'lazy' }));
+}
+// reto auténtico del día: Loonie te empuja (con sarcasmo) a mostrarte como eres
+const RETOS = ['Reto de hoy: di una opinión real aunque nadie esté de acuerdo. Sí, en voz alta. No te vas a morir, lo comprobé.', 'Reto: di "no" a algo sin dar tres explicaciones. Un "no, gracias" y ya. Revolucionario, lo sé.', 'Reto: ponte algo que te encante aunque sea "demasiado" para los demás. Demasiado es tu talla.', 'Reto: cuéntale a alguien que vas por Medicina. Sin "bueno, si se puede". Vas. Punto.', 'Reto: hoy no pidas perdón por cosas que no son tu culpa. Cuenta cuántas veces te frenas. Ugh, te va a sorprender.', 'Reto: pon tu música favorita donde otros la escuchen. Que sufran un poquito de buen gusto.'];
+async function autentica() {
+  const L = await import('./loona.js'); const s = await db.settings();
+  if (s.geminiKey) { try { const t = await L.aiText(s, 'Dame mi reto auténtico de hoy: uno pequeño y concreto para mostrarme como soy, con tu sarcasmo cariñoso, en 2 o 3 frases.', { system: 'Eres Loona (Loonie), la amiga gótica, sarcástica y leal de Eve. Le enseñas a ser auténtica con ironía, sin frases cursis. Español latino, sin emojis.' }); if (t) return L.speak(t); } catch { } }
+  L.speak(RETOS[Math.floor(Math.random() * RETOS.length)]);
 }
 const QUOTES = ['Un capítulo a la vez, Eve. Nadie aprende Medicina en un día.', 'La que estudia cansada también cuenta. Pero duerme, eh.', 'Hoy difícil, mañana UNILA. XOXO.', 'Tú contra el ENEM. Yo apuesto por ti. No se lo digas a nadie.', 'Si fuera fácil, cualquiera sería médica.'];
 const MED = ['El corazón late unas 100 000 veces al día.', 'La mitocondria produce ATP por respiración celular: cae mucho en el ENEM.', 'Los glóbulos rojos viven unos 120 días y no tienen núcleo.', 'El ADN se duplica de forma semiconservativa: cada copia tiene una hebra vieja y una nueva.', 'Las vacunas generan memoria inmunológica con linfocitos B y T.', 'La insulina baja la glucosa en sangre; el glucagón la sube.'];
