@@ -1316,8 +1316,10 @@ function joinText(a, b) {
   return a + ' ' + b;
 }
 // "Concepto: explicación" -> concepto en negrita
+// colores con significado: [[azul:sangre venosa]] -> texto en ese color (solo cuando el color explica algo)
+const SIG = { rojo: '#E5484D', azul: '#4C8DFF', verde: '#3FB27F', amarillo: '#E9C46A', morado: '#9B7BEA', naranja: '#F08A4B', rosa: '#E77AA8', celeste: '#5BC0EB', marron: '#A8794F', gris: '#9A9AA0' };
 function fmtItem(t) {
-  const s = esc(t);
+  let s = esc(t).replace(/\[\[(\w+):([^\]]+)\]\]/g, (m, c, x) => { const k = c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); return SIG[k] ? `<span class="sig" style="--sig:${SIG[k]}">${x}</span>` : x; });
   const m = s.match(/^([^:]{2,48}):\s(.+)$/);
   return m ? `<b>${m[1]}:</b> ${m[2]}` : s;
 }

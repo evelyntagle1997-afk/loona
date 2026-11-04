@@ -138,7 +138,7 @@ Devuelve SOLO JSON con esta forma:
  "mnemotecnia": "truco para memorizar (sigla, frase o rima); vacío si no aplica",
  "preguntas": [{"q": "pregunta de repaso", "a": "respuesta corta"}],
  "stickers": ["2 a 4 palabras clave del tema en español para elegir ilustraciones"]}
-Reglas: LO MÁS CONCISO POSIBLE. Estilo apunte telegráfico: 'Concepto: idea clave', sin artículos ni relleno, máx 12 palabras por item; une fragmentos repetidos en un solo item; corrige errores de lectura (OCR) del texto escaneado. No inventes datos que no estén en los fragmentos salvo en explicacion/analogia (máx 2 frases cortas). Mantén el nivel de importancia que puso la estudiante.`;
+Reglas: LO MÁS CONCISO POSIBLE. Estilo apunte telegráfico: 'Concepto: idea clave', sin artículos ni relleno, máx 12 palabras por item; une fragmentos repetidos en un solo item; corrige errores de lectura (OCR) del texto escaneado. No inventes datos que no estén en los fragmentos salvo en explicacion/analogia (máx 2 frases cortas). Mantén el nivel de importancia que puso la estudiante. COLORES: el resumen es en negro y plata, pero si un color es NECESARIO para entender (sangre arterial/venosa, indicadores químicos, colores de llamas, espectro, partes de un esquema que se distinguen por color), es obligatorio marcarlo así: [[rojo:sangre arterial]], [[azul:sangre venosa]] (colores: rojo, azul, verde, amarillo, morado, naranja, rosa, celeste, marron, gris). No uses color si no aporta a la explicación.`;
   const models = [model || 'gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash'];
   let lastErr;
   for (const m of [...new Set(models)]) {

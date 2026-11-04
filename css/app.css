@@ -1789,3 +1789,6 @@ html.lite .ag-vp::before { animation: none; }
 .agv-ev { border-left-color: #8a8a90 !important; } .agv-ev.clash { box-shadow: inset 0 0 0 1px #D4202C !important; }
 .home.ag-home { background: radial-gradient(70% 60% at 50% 45%, transparent 40%, rgba(0,0,0,.65) 100%), radial-gradient(120% 100% at 50% 45%, #1f1d1e, #0e0d0e) !important; }
 .ag-light { background: radial-gradient(90% 80% at 18% 8%, rgba(255,244,228,.06), transparent 55%), radial-gradient(120% 90% at 80% 100%, rgba(0,0,0,.18), transparent 60%) !important; }
+/* v97 colores con significado dentro de los resúmenes (solo cuando la explicación los necesita) */
+.sum .sig { color: var(--sig) !important; font-weight: 700; }
+.sum .sig::before { content: ''; display: inline-block; width: .55em; height: .55em; border-radius: 50%; background: var(--sig); margin: 0 .3em .08em 0; vertical-align: middle; }
