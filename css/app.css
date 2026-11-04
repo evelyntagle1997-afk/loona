@@ -1551,3 +1551,9 @@ html.lite .ag-vp::before { animation: none; }
 /* más contraste y presencia en los recuerdos */
 .ag-deco img { filter: contrast(1.12) brightness(1.02) !important; }
 .ag-sello { z-index: 3 !important; }
+/* v77 se abre solo cuando tú la tocas */
+.ag-cover.init, .ag-cover.shut { pointer-events: auto; cursor: pointer; }
+.agc-hint { position: absolute; left: 0; right: 0; bottom: 12%; text-align: center; font: 500 .95cqw system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: rgba(220,216,218,.55); animation: hintp 2.4s ease-in-out infinite; }
+@keyframes hintp { 50% { color: rgba(220,216,218,.9); } }
+@media (hover: hover) { .ag-cover.init:hover, .ag-cover.shut:hover { filter: brightness(1.08); } }
+@media (prefers-reduced-motion: reduce) { .agc-hint { animation: none; } }

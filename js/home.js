@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 76;
+export const APP_VERSION = 77;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -107,12 +107,12 @@ export async function renderHome(app, go0) {
     h('span', { class: 'ag-ver' }, 'v' + APP_VERSION));
   // tapa delantera de cuero: abre la agenda al entrar
   const cover = h('div', { class: 'ag-cover init', 'aria-hidden': 'true' },
-    h('div', { class: 'agc-front' }, h('span', { class: 'agc-strap' }), h('span', { class: 'agc-name' }, 'Loona'), h('span', { class: 'agc-moon' })),
+    h('div', { class: 'agc-front' }, h('span', { class: 'agc-strap' }), h('span', { class: 'agc-name' }, 'Loona'), h('span', { class: 'agc-moon' }), h('span', { class: 'agc-hint' }, 'Toca para abrir')),
     h('div', { class: 'agc-back' }));
   scene.append(h('div', { class: 'ag-desk', 'aria-hidden': 'true' }), cover);
   cover.addEventListener('click', () => openAgenda());
   const vp = h('div', { class: 'ag-vp' }, scene);
-  requestAnimationFrame(() => requestAnimationFrame(() => openAgenda()));
+  // la agenda espera cerrada hasta que la toques
   // la nota cambia sola con la hora (madrugada, mañana, tarde, noche)
   const tick = setInterval(() => { if (!scene.isConnected) return clearInterval(tick); const g = saludo(); const q = c => scene.querySelector(c);
     if (q('.ag-hi')) q('.ag-hi').textContent = g.hi; if (q('.ag-date')) q('.ag-date').textContent = g.date; if (!noteText() && subjects.length && q('.ag-xo')) q('.ag-xo').textContent = g.line; }, 60000);
