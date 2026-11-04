@@ -56,18 +56,19 @@ function pcmToWav(b64, rate = 24000) {
   new Uint8Array(buf, 44).set(pcm); return new Blob([buf], { type: 'audio/wav' });
 }
 let audioEl = null, ttsFails = 0, ttsFailAt = 0;
+try { caches.delete('loona-voz'); } catch { }   // borra audios viejos que traían la instrucción leída
 const TTS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
 // las frases repetidas (saludos) se guardan para no gastar cuota ni esperar
 async function ttsCache(text, blob) {
-  try { const c = await caches.open('loona-voz'); const k = new Request('/__voz/' + encodeURIComponent(text.slice(0, 300)));
+  try { const c = await caches.open('loona-voz2'); const k = new Request('/__voz/' + encodeURIComponent(text.slice(0, 300)));
     if (blob) return c.put(k, new Response(blob)); const r = await c.match(k); return r ? r.blob() : null; } catch { return null; }
 }
 async function ttsFetch(s, text) {
-  const style = 'Lee esto en español latinoamericano, como una chica joven y cool hablando con su mejor amiga: voz femenina suave y un poco grave, relajada y natural, tono seco, medio aburrido y sarcástico, sin pausas robóticas. Texto: ';
+  // solo el texto: algunos modelos de voz leían en voz alta las instrucciones de estilo
   let last;
   for (const m of TTS) {
     let r; try { r = await fetch(API(m, s.geminiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-      contents: [{ parts: [{ text: style + text }] }],
+      contents: [{ parts: [{ text }] }],
       generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } } } }) }); }
     catch { throw new Error('sin internet'); }
     if (r.status === 429) throw new Error('tts cuota');
