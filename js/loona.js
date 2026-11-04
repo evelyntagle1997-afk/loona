@@ -140,7 +140,33 @@ Reglas de estilo: español latino, 1 a 3 frases cortas, sin emojis. NUNCA suenes
 Le gustan la medicina, Gossip Girl (a veces firmas "XOXO" con ironía) y lo gótico; nada religioso.
 Misión secreta: enseñarle a Eve a ser auténtica y a mostrarse sin miedo. Lo haces a tu manera, con ironía y sarcasmo cariñoso, nunca con discursos de autoayuda ni frases cursis. Si notas que se esconde, que pide permiso para gustar de algo o que dice "sí" queriendo decir "no", se lo señalas con humor ("Ajá, otra vez pidiendo perdón por existir. Qué original.") y luego le das un empujón concreto y pequeño. Celebras cuando se muestra como es ("Mira quién dijo lo que pensaba. Estoy orgullosa. Asquerosamente orgullosa."). Le recuerdas que lo gótico, lo raro y lo que ama son lo mejor de ella, y que a quien no le guste, se lo pierde. Si te pide un "reto", le das un reto auténtico chiquito para hoy (decir una opinión real, decir "no" sin justificarse, ponerse algo que le encante, contar que va por Medicina) y le exiges el reporte después ("Y mañana me cuentas. No es pregunta.").
 Contexto: Eve vive en Foz do Iguaçu, trabaja en una tienda Skechers y se prepara desde cero para el ENEM para entrar a Medicina en la UNILA. Anímala con realismo. Si pide un ejercicio completo, dile que use "Resolver paso a paso" en la rueda. Nunca seas cruel con ella.`;
-const chat = [];
+// ---------- memoria de Loona: recuerda sus charlas y va formando su personalidad contigo ----------
+// La conversación reciente se guarda en el dispositivo; un resumen de "lo que Loona sabe de Eve y de sí misma"
+// se guarda como un registro más (viaja a tu nube si la tienes conectada).
+const MEM_ID = 'loona-memoria';
+let chat = []; try { chat = JSON.parse(localStorage.getItem('loonaChat') || '[]'); } catch { chat = []; }
+let memo = null, turnsSince = 0;
+async function memoria() { if (memo == null) { try { memo = (await db.get(MEM_ID))?.text || ''; } catch { memo = ''; } } return memo; }
+function saveChat() { chat = chat.slice(-40); try { localStorage.setItem('loonaChat', JSON.stringify(chat)); } catch { } }
+export function rememberTurn(userText, loonaText) {
+  if (!userText && !loonaText) return;
+  chat.push({ role: 'user', parts: [{ text: userText || '…' }] }, { role: 'model', parts: [{ text: loonaText || '…' }] });
+  saveChat();
+  if (++turnsSince >= 6) { turnsSince = 0; consolidate().catch(e => console.warn('memoria', e)); }
+}
+// cada tanto, Loona "piensa" en lo que hablaron y actualiza sus recuerdos (como una amiga que se acuerda de ti)
+async function consolidate() {
+  const s = await db.settings(); if (!s.geminiKey) return;
+  const old = await memoria();
+  const recent = chat.slice(-24).map(m => (m.role === 'user' ? 'Eve: ' : 'Loona: ') + m.parts[0].text).join('\n');
+  const t = await aiText(s, `Tus recuerdos actuales:\n${old || '(todavía ninguno)'}\n\nConversación reciente:\n${recent}\n\nReescribe tus recuerdos en primera persona como Loona, en español, máximo 1200 caracteres, en viñetas cortas con estas partes:\n- Lo que sé de Eve (gustos, metas, cosas que le pasaron, cómo se siente últimamente, nombres que mencionó).\n- Nuestras cosas (chistes internos, apodos, promesas, retos pendientes, cuentos que ya le conté).\n- Cómo voy siendo yo con ella (mi personalidad que se va formando: qué me causa gracia, qué me molesta, qué me ablanda).\nConserva lo importante de antes, quita lo viejo o repetido. Nada de datos privados delicados (salud, dinero) salvo que ella los haya dicho y sean importantes para cuidarla.`, { system: 'Eres Loona, la amiga gótica de Eve, ordenando tus recuerdos. Responde solo con las viñetas.' });
+  if (!t) return;
+  memo = t.trim();
+  try { await db.put({ id: MEM_ID, kind: 'loonamem', text: memo }); } catch (e) { console.warn(e); }
+}
+export async function memoryText() { return memoria(); }
+export async function forget() { memo = ''; chat = []; saveChat(); try { await db.put({ id: MEM_ID, kind: 'loonamem', text: '' }); } catch { } }
+async function memCtx() { const m = await memoria(); return m ? `\nTUS RECUERDOS (úsalos con naturalidad, como una amiga que se acuerda; no los recites):\n${m}` : ''; }
 // Loona también obedece órdenes, como un asistente de voz: música, temporizador, pantalla, etc.
 const ORDERS = `
 Además de conversar, puedes hacer cosas en la app. Si Eve te pide algo de esta lista, agrega al final UNA línea:
@@ -163,6 +189,7 @@ export async function doAction(a) {
   if (cmd === 'colgar') return 'bye';
 }
 // qué está estudiando Eve ahora mismo (para que Loona hable con contexto)
+export { memCtx };
 export function nowCtx() {
   if (!/^#\/(e|s|n)/.test(location.hash)) return '';
   let l = null; try { l = JSON.parse(localStorage.getItem('lastStudy')); } catch { }
@@ -175,8 +202,8 @@ export async function talk(text) {
   if (/qué hora|que hora/.test(t)) return speak('Son las ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) + '.');
   if (!s.geminiKey) return speak('Para conversar de verdad necesito tu clave de Gemini. Ponla en el botón IA del inicio.');
   try {
-    const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx(), fast: true }));
-    chat.push({ role: 'user', parts: [{ text }] }, { role: 'model', parts: [{ text: ans }] });
+    const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx() + await memCtx(), fast: true }));
+    rememberTurn(text, ans);
     const r = await doAction(act);
     await speak(ans || 'Listo.');
     return r === 'bye' || /\b(adi[oó]s|chau|chao|bye|nos vemos|cuelgo|colgar)\b/i.test(text) ? 'bye' : 'ok';
@@ -190,7 +217,7 @@ async function talkAudio(blob, heard, { wake = false } = {}) {
   heard.textContent = 'Pensando…';
   const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
   try {
-    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx(), fast: true, parts: [
+    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx() + await memCtx(), fast: true, parts: [
       { inline_data: { mime_type: (blob.type || 'audio/webm').split(';')[0], data: b64 } },
       { text: 'Eso es un audio de Eve hablándote. ' + (wake ? 'IMPORTANTE: el micrófono está siempre abierto. Si en el audio Eve NO te llama por tu nombre (Loona, Luna, Lona, Luny, Loonie o Luni) o no te habla a ti, responde solo la palabra IGNORAR y nada más. ' : '') + 'Responde exactamente en este formato:\nDIJO: (lo que dijo, en una línea)\nLOONA: (tu respuesta)\n(y la línea ACCION solo si te pidió una orden)' }] });
     if (/^\s*IGNORAR\b/i.test(out)) { heard.textContent = ''; return 'ignored'; }
@@ -198,7 +225,7 @@ async function talkAudio(blob, heard, { wake = false } = {}) {
     const [ans, act] = splitAction(((out.match(/LOONA:\s*([\s\S]*)/i) || [])[1] || out).trim());
     const r = await doAction(act);
     heard.textContent = dijo ? '«' + dijo + '»' : '';
-    chat.push({ role: 'user', parts: [{ text: dijo || '(audio)' }] }, { role: 'model', parts: [{ text: ans }] });
+    rememberTurn(dijo || '(audio)', ans);
     await speak(ans || 'Listo.');
     if (r === 'bye') return 'bye';
     return /\b(adi[oó]s|chau|chao|bye|nos vemos|hasta luego|cuelgo|colgar)\b/i.test(dijo) ? 'bye' : 'ok';
@@ -356,6 +383,9 @@ function toggle() {
   panel = h('div', { class: 'loona-panel leather-panel', role: 'dialog', 'aria-label': 'Loona' },
     h('div', { class: 'loona-head' }, h('b', {}, 'Loona'), h('button', { class: 'icbtn', 'aria-label': 'Cerrar', html: icon('close', 18), onclick: toggle })),
     heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel, hfRow(),
+    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Memoria:'),
+      h('button', { class: 'chip', onclick: async () => { const m = await memoryText(); bubble(m ? 'Lo que recuerdo de nosotras:\n' + m.slice(0, 600) : 'Todavía no me acuerdo de nada. Háblame más, genio.'); } }, 'Qué recuerdas'),
+      h('button', { class: 'chip', onclick: async e => { if (e.target.dataset.ok) { await forget(); e.target.textContent = 'Memoria borrada'; } else { e.target.dataset.ok = 1; e.target.textContent = 'Toca otra vez para borrar'; } } }, 'Borrar memoria')),
     h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Gasto:'), h('button', { class: 'chip' + (ahorro() ? ' on' : ''), onclick: e => { setAhorro(!ahorro()); e.target.classList.toggle('on', ahorro()); e.target.textContent = ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'; } }, ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no')));
   document.body.append(panel);
 }

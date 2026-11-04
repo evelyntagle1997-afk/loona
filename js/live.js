@@ -3,7 +3,7 @@
 // disponible para tu clave, la app usa la conversación normal.
 import * as db from './db.js';
 import { toast } from './ui.js';
-import { PERSONA, nowCtx, doAction } from './loona.js';
+import { PERSONA, nowCtx, doAction, memCtx, rememberTurn } from './loona.js';
 
 const MODELS = ['gemini-3.8-live', 'gemini-3.1-flash-live-preview', 'gemini-2.5-flash-native-audio-preview-12-2025'];
 const WS = key => `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(key)}`;
@@ -54,7 +54,7 @@ export async function startLive({ firstText = '', onEnd } = {}) {
   catch { throw new Error('Permite el micrófono para hablar con Loona.'); }
   const setup = {
     generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } }, languageCode: 'es-US' } },
-    systemInstruction: { parts: [{ text: PERSONA + nowCtx() + '\nEstás en una llamada de voz en vivo con Eve: habla natural y fluido como una persona, frases cortas, sin listas. Cuando Eve te da una orden (música, temporizador), hazla y responde con dos o tres palabras o nada; no hables si no te hablan. Si te interrumpe, para y escúchala. Usa la herramienta "orden" cuando te pida música, temporizador o pantalla; cuando ella se despida, usa orden colgar.' }] },
+    systemInstruction: { parts: [{ text: PERSONA + nowCtx() + (await memCtx()) + '\nEstás en una llamada de voz en vivo con Eve: habla natural y fluido como una persona, frases cortas, sin listas. Cuando Eve te da una orden (música, temporizador), hazla y responde con dos o tres palabras o nada; no hables si no te hablan. Si te interrumpe, para y escúchala. Usa la herramienta "orden" cuando te pida música, temporizador o pantalla; cuando ella se despida, usa orden colgar.' }] },
     tools: [ORDER_TOOL],
     inputAudioTranscription: {}, outputAudioTranscription: {},
   };
@@ -99,7 +99,7 @@ export async function startLive({ firstText = '', onEnd } = {}) {
       if (sc.inputTranscription?.text) { heard += sc.inputTranscription.text; emit({ heard }); bump(); }
       if (sc.outputTranscription?.text) { said += sc.outputTranscription.text; emit({ said }); }
       for (const p of sc.modelTurn?.parts || []) if (p.inlineData?.data) { play(p.inlineData.data); bump(); }
-      if (sc.turnComplete) { said = ''; heard = ''; }
+      if (sc.turnComplete) { if (heard.trim() || said.trim()) rememberTurn(heard.trim(), said.trim()); said = ''; heard = ''; }
     }
     if (m.toolCall?.functionCalls) {
       const res = [];
