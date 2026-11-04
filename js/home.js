@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 55;
+export const APP_VERSION = 56;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -44,13 +44,13 @@ export async function renderHome(app, go) {
     h('button', { class: 'ag-sub ag-new', onclick: () => newSubject(go) }, h('span', { html: icon('plus', 16) }), h('span', {}, 'Nueva materia')));
   const pocket = h('div', { class: 'ag-z ag-pocket', style: { left: '8.6%', top: '56.8%', width: '20.8%', height: '28.6%' }, role: 'button', tabindex: 0, 'aria-label': 'Tu foto en el bolsillo' });
   initPocket(pocket);
-  const hour = new Date().getHours(), hi = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+
   const scene = h('div', { class: 'agenda' },
     h('img', { class: 'ag-bg', src: 'img/agenda.webp', srcset: 'img/agenda-s.webp 1024w, img/agenda.webp 1536w', sizes: '(max-width: 700px) 1000px, 100vw', alt: '', draggable: false, fetchpriority: 'high' }),
     h('button', { class: 'ag-z ag-note ag-hot', style: { left: '20.4%', top: '13.6%', width: '15.4%', height: '26.4%' }, 'aria-label': 'Nota del clip: escribe un recordatorio', title: 'Tu nota: toca para escribir un recordatorio', onclick: editNote },
-      h('span', { class: 'ag-hi' }, hi + ', Eve'),
-      h('span', { class: 'ag-date' }, new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })),
-      h('span', { class: 'ag-xo' }, noteText() || (subjects.length ? '¿qué estudiamos hoy?' : 'crea tu primera materia')),
+      h('span', { class: 'ag-hi' }, saludo().hi),
+      h('span', { class: 'ag-date' }, saludo().date),
+      h('span', { class: 'ag-xo' }, noteText() || (subjects.length ? saludo().line : 'crea tu primera materia')),
       h('span', { class: 'ag-sign' }, 'XOXO, Loona')),
     card('c1' + (lastOk ? '' : ' dim'), 8.5, 24.3, 10.8, lastOk ? 'Seguir estudiando' : 'Sin pendientes', lastOk ? lastS.title + (lastS.page ? ' · pág. ' + lastS.page : '') : '', () => lastOk && go(lastS.hash)),
     card('c2', 8.5, 31, 10.8, 'Nueva materia', '', () => newSubject(go)),
@@ -69,8 +69,12 @@ export async function renderHome(app, go) {
     hot('ag-strap', 91, 40.5, 7.2, 16, 'Broche: pantalla completa', () => toggleFull()),
     P('ag-page', 52, 12, 35, 75, idx),
     h('span', { class: 'ag-word', 'aria-hidden': 'true' }, 'Loona'),
+    h('span', { class: 'ag-grain', 'aria-hidden': 'true' }),
     h('span', { class: 'ag-ver' }, 'v' + APP_VERSION));
   const vp = h('div', { class: 'ag-vp' }, scene);
+  // la nota cambia sola con la hora (madrugada, mañana, tarde, noche)
+  const tick = setInterval(() => { if (!scene.isConnected) return clearInterval(tick); const g = saludo(); const q = c => scene.querySelector(c);
+    if (q('.ag-hi')) q('.ag-hi').textContent = g.hi; if (q('.ag-date')) q('.ag-date').textContent = g.date; if (!noteText() && subjects.length && q('.ag-xo')) q('.ag-xo').textContent = g.line; }, 60000);
   app.replaceChildren(h('div', { class: 'home ag-home' },
     h('h1', { class: 'sr-only' }, 'Loona'),
     vp,
@@ -189,6 +193,12 @@ async function testKey(k, model) {
 // zona tocable sobre un objeto de la foto (se ilumina al pasar el mouse y muestra qué hace)
 function hot(cls, l, t, w, hh, label, fn) {
   return h('button', { class: 'ag-z ag-hot ' + cls, style: { left: l + '%', top: t + '%', width: w + '%', height: hh + '%' }, 'aria-label': label, title: label, 'data-tip': label.split(':')[1]?.trim() || label, onclick: e => { e.stopPropagation(); fn(e); } });
+}
+// saludo según la hora (con la actitud de Loonie)
+function saludo() {
+  const d = new Date(), hr = d.getHours();
+  const [hi, line] = hr < 5 ? ['¿Despierta aún, Eve?', 'duerme un poco… o estudia, lo que sea'] : hr < 12 ? ['Buenos días, Eve', '¿qué estudiamos hoy?'] : hr < 19 ? ['Buenas tardes, Eve', 'un tema más y te dejo en paz'] : ['Buenas noches, Eve', 'la noche es nuestra. a estudiar'];
+  return { hi, line, date: d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }) };
 }
 const noteText = () => { try { return localStorage.getItem('homeNote') || ''; } catch { return ''; } };
 async function editNote(e) {

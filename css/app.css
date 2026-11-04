@@ -1383,3 +1383,20 @@ button.ag-z { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .hf-peek { position: fixed; z-index: 46; right: max(80px, env(safe-area-inset-right)); bottom: calc(104px + env(safe-area-inset-bottom, 0px)); max-width: min(60vw, 340px); padding: 6px 12px; border-radius: 12px; background: rgba(10,10,10,.82); color: #e9e5e2; font: 13px system-ui, sans-serif; opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; pointer-events: none; }
 .hf-peek.on { opacity: 1; transform: none; }
 .study .hf-peek { bottom: calc(26px + env(safe-area-inset-bottom, 0px)); }
+/* v56 más gótico: papel tapiz damasco detrás, grano de foto antigua, viñeta y luz de vela */
+.home.ag-home { background:
+  radial-gradient(70% 60% at 50% 45%, transparent 40%, rgba(0,0,0,.65) 100%),
+  url(../img/damasco.svg) 0 0 / 120px 160px,
+  radial-gradient(120% 100% at 50% 45%, #1f1d1e, #0e0d0e) !important; }
+.ag-grain { position: absolute; inset: 0; z-index: 4; pointer-events: none; mix-blend-mode: overlay; opacity: .16; background: url(../img/grano.png) 0 0 / 256px 256px; }
+.agenda .ag-bg { filter: contrast(1.08) brightness(.94) saturate(.9); }
+.ag-vp::before { content: ''; position: absolute; left: 4%; top: 2%; width: 34vmin; height: 34vmin; border-radius: 50%; pointer-events: none; z-index: 5;
+  background: radial-gradient(closest-side, rgba(242,170,80,.10), transparent 70%); animation: vela 5s ease-in-out infinite; mix-blend-mode: screen; }
+@keyframes vela { 0%,100% { opacity: .85; transform: scale(1); } 40% { opacity: 1; transform: scale(1.03); } 70% { opacity: .75; } }
+.ag-vp { position: relative; }
+html.lite .ag-vp::before { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ag-vp::before { animation: none; } }
+/* la foto se funde con el papel tapiz (sin recuadro) */
+.agenda::before { display: none !important; }
+.agenda .ag-bg { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(180deg, transparent 0, #000 9%, #000 91%, transparent 100%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(180deg, transparent 0, #000 9%, #000 91%, transparent 100%); mask-composite: intersect; }
+.ag-grain { -webkit-mask-image: radial-gradient(75% 75% at 50% 50%, #000 60%, transparent 100%); mask-image: radial-gradient(75% 75% at 50% 50%, #000 60%, transparent 100%); }

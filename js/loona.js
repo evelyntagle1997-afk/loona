@@ -101,7 +101,8 @@ async function speak0(text) {
   try {
     const s = await db.settings();
     if (ttsFails >= 3 && Date.now() - ttsFailAt > 5 * 60000) ttsFails = 0;   // vuelve a intentar la voz natural cada 5 min
-    if (mode === 'ia' && s.geminiKey && navigator.onLine && ttsFails < 3) {
+    const free = ahorro() && naturalVoice();   // en Edge hay voces naturales gratis: no gasto Gemini
+    if (mode === 'ia' && !free && s.geminiKey && navigator.onLine && ttsFails < 3) {
       try { await sayAI(s, text); ttsFails = 0; return; } catch (e) { console.warn(e); ttsFails++; ttsFailAt = Date.now(); if (ttsFails === 3) toast('La voz natural de Gemini no responde ahora; uso la voz del equipo un rato.', 3500); }
     }
     await sayDevice(text);
@@ -114,7 +115,7 @@ function bubble(text) {
 }
 
 // ---------- saludos ----------
-const hourSaludo = () => { const hr = new Date().getHours(); return hr < 12 ? 'Buenos días' : hr < 19 ? 'Buenas tardes' : 'Buenas noches'; };
+const hourSaludo = () => { const hr = new Date().getHours(); return hr < 5 ? 'Buenas noches' : hr < 12 ? 'Buenos días' : hr < 19 ? 'Buenas tardes' : 'Buenas noches'; };
 export function greet(where = 'open', subject) {
   try { const k = 'loonaGreet-' + where, t = +localStorage.getItem(k) || 0; if (Date.now() - t < 40 * 60 * 1000) return; localStorage.setItem(k, Date.now()); } catch { }
   const sal = hourSaludo();
@@ -174,8 +175,9 @@ export async function talk(text) {
   try {
     const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx(), fast: true }));
     chat.push({ role: 'user', parts: [{ text }] }, { role: 'model', parts: [{ text: ans }] });
-    doAction(act);
-    return speak(ans || 'Listo.');
+    const r = await doAction(act);
+    await speak(ans || 'Listo.');
+    return r === 'bye' || /\b(adi[oó]s|chau|chao|bye|nos vemos|cuelgo|colgar)\b/i.test(text) ? 'bye' : 'ok';
   } catch (e) { return speak(e.message); }
 }
 
@@ -200,6 +202,41 @@ async function talkAudio(blob, heard, { wake = false } = {}) {
     return /\b(adi[oó]s|chau|chao|bye|nos vemos|hasta luego|cuelgo|colgar)\b/i.test(dijo) ? 'bye' : 'ok';
   } catch (e) { heard.textContent = ''; await speak(e.message); return 'error'; }
 }
+// ---------- modo ahorro ----------
+// Usa lo gratis del navegador (dictado para entenderte, voces naturales de Edge para hablar)
+// y Gemini solo para pensar la respuesta: así la cuota gratis dura mucho más.
+export const ahorro = () => { try { return localStorage.getItem('loonaAhorro') !== '0'; } catch { return true; } };
+export const setAhorro = v => { try { localStorage.setItem('loonaAhorro', v ? '1' : '0'); } catch { } };
+const srOk = () => { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let bad = false; try { bad = localStorage.getItem('srOff') === '1'; } catch { } return SR && !bad && !/Android/i.test(navigator.userAgent) ? SR : null; };
+export const naturalVoice = () => { if (!sysVoice) pickVoice(); return /Natural|Online/i.test(sysVoice?.name || ''); };
+// escucha una frase con el dictado del navegador (gratis). Devuelve el texto, '' si no hablaste, o null si el dictado no sirve aquí
+function srOnce(heard) {
+  const SR = srOk(); if (!SR) return Promise.resolve(null);
+  return new Promise(res => {
+    let done = false, txt = '', started = false;
+    const fin = v => { if (done) return; done = true; res(v); };
+    const r = new SR(); r.lang = 'es-419'; r.interimResults = true; r.continuous = false;
+    import('./music.js').then(m => m.duck(true, 'oir'));
+    r.onaudiostart = () => { started = true; };
+    r.onresult = ev => { txt = [...ev.results].map(x => x[0].transcript).join(''); heard.textContent = '«' + txt + '»'; if (ev.results[ev.results.length - 1].isFinal) { try { r.stop(); } catch { } fin(txt.trim()); } };
+    r.onerror = e => { if (e.error === 'no-speech' || e.error === 'aborted') return fin(''); try { localStorage.setItem('srOff', '1'); } catch { } fin(null); };
+    r.onend = () => { import('./music.js').then(m => m.duck(false, 'oir')); fin(txt.trim()); };
+    heard.textContent = 'Te escucho…';
+    try { r.start(); } catch { fin(null); }
+    setTimeout(() => { if (!started) { try { r.abort(); } catch { } try { localStorage.setItem('srOff', '1'); } catch { } fin(null); } }, 5000);
+    setTimeout(() => { try { r.stop(); } catch { } }, 20000);
+  });
+}
+// una vuelta de la conversación: gratis si se puede; si no, con el audio a Gemini
+async function hearTurn(btn, heard) {
+  if (ahorro()) {
+    const t = await srOnce(heard);
+    if (t === '') return call?.next('silence');
+    if (t) { heard.textContent = '«' + t + '»'; const r = await talk(t); return call?.next(r); }
+  }
+  recordAndTalk(btn, heard);
+}
+
 // ---------- llamada: conversación seguida, como con una amiga ----------
 // Tú hablas → Loona responde con voz → vuelve a escucharte sola. Cuelgas con el botón o diciendo "chau".
 let call = null;
@@ -212,14 +249,14 @@ function startCall(btn, heard) {
       if (!call) return;
       if (r === 'bye' || r === 'error') return endCall(r === 'bye' ? null : '');
       if (r === 'silence') { silences++; if (silences >= 2) return endCall('Ok. Me voy. Lo que sea.');
-        return speak(silences === 1 ? '¿Hola? ¿Me dejaste en visto?' : '').then(() => call && recordAndTalk(btn, heard)); }
-      silences = 0; setTimeout(() => call && recordAndTalk(btn, heard), 250);
+        return speak(silences === 1 ? '¿Hola? ¿Me dejaste en visto?' : '').then(() => call && hearTurn(btn, heard)); }
+      silences = 0; setTimeout(() => call && hearTurn(btn, heard), 250);
     },
   };
   btn.classList.add('oncall'); btn.innerHTML = icon('close', 18) + 'Colgar';
   const hr = new Date().getHours();
   speak(['¿Qué?', 'Ajá. Habla.', hr >= 19 ? '¿Despierta a esta hora? Ugh. Dime.' : 'Ugh. ¿Ahora qué, Eve?'][Math.floor(Math.random() * 4)])
-    .then(() => call && recordAndTalk(btn, heard));
+    .then(() => call && hearTurn(btn, heard));
 }
 function endCall(msg) {
   const c = call; call = null; if (!c) return;
@@ -301,7 +338,9 @@ function toggle() {
     h('button', { class: 'chip' + (voiceMode() === k ? ' on' : ''), onclick: e => { setVoiceMode(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n)));
   panel = h('div', { class: 'loona-panel leather-panel', role: 'dialog', 'aria-label': 'Loona' },
     h('div', { class: 'loona-head' }, h('b', {}, 'Loona'), h('button', { class: 'icbtn', 'aria-label': 'Cerrar', html: icon('close', 18), onclick: toggle })),
-    heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel, hfRow());
+    heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel, hfRow(),
+    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Gasto:'), h('button', { class: 'chip' + (ahorro() ? ' on' : ''), onclick: e => { setAhorro(!ahorro()); e.target.classList.toggle('on', ahorro()); e.target.textContent = ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'; } }, ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'),
+      h('span', { class: 'opt-hint' }, naturalVoice() ? 'voz natural gratis lista' : 'para voz natural gratis usa Edge')));
   document.body.append(panel);
 }
 async function listen(btn, heard) {
