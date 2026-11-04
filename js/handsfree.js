@@ -27,12 +27,12 @@ export async function start(user) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let srOff = false; try { srOff = localStorage.getItem('hfEngine') === 'gemini'; } catch { }
   if (SR && !srOff) startSR(SR); else await startVAD();
-  if (user && on) speak('Ya. Te escucho todo el rato. Di «Loona» y lo que quieras.');
+  if (user && on) speak('Ugh. Bien. Te escucho todo el rato. Di «Luny» y lo que quieras.');
 }
 export function stop(user) {
   on = false; try { localStorage.removeItem(KEY); } catch { }
   engine?.stop(); engine = null; mark(null);
-  if (user) speak('Ok, dejo de escuchar. Avísame con la llave.');
+  if (user) speak('Ok. Silencio. Por fin.');
 }
 // al abrir la app: si lo dejaste prendido, vuelve solo (si el navegador ya dio permiso al micrófono)
 export async function resume() {
@@ -48,7 +48,7 @@ async function heard(text) {
   const m = t.match(WAKE);
   if (!m && Date.now() > follow) return;
   const cmd = m ? t.slice(m.index + m[0].length).trim() : t;
-  if (!cmd) { follow = Date.now() + 8000; return speak(['¿Sí?', '¿Qué pasó?', 'Dime.', 'Ajá, te escucho.'][Math.floor(Math.random() * 4)]); }
+  if (!cmd) { follow = Date.now() + 8000; return speak(['¿Qué?', 'Ajá.', '¿Y ahora qué?', 'Habla.'][Math.floor(Math.random() * 4)]); }
   follow = 0;
   await talk(cmd);
   follow = Date.now() + 8000;   // unos segundos para seguir hablando sin repetir su nombre
