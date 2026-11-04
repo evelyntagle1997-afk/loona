@@ -182,6 +182,14 @@ export async function renderStudy(app, go, { pdfId, nbId, exportOnly }) {
   current = { pdf: pv, nb: notebook, wheels };
   // recuerda dónde estabas, para "Seguir estudiando" en el inicio
   const saveLast = () => { try { localStorage.setItem('lastStudy', JSON.stringify({ id: pdf?.id || nb.id, pdf: !!pdf, hash: location.hash, title: pdf ? pdf.name : nb.name, subject: subject?.name, page: pv?.curPage?.() })); } catch { } };
+  try { localStorage.setItem('wasStudying', '1'); } catch { }
+  // el cuaderno vuelve a la misma altura donde lo dejaste
+  const nbKey = 'nbScroll-' + nb.id, sc = notebook.scroller;
+  if (sc) {
+    let pos = null; try { pos = JSON.parse(localStorage.getItem(nbKey)); } catch { }
+    if (pos) { const put = () => { sc.scrollTop = pos.f * sc.scrollHeight; }; [60, 400, 1200].forEach(t => setTimeout(put, t)); }
+    let st = 0; sc.addEventListener('scroll', () => { clearTimeout(st); st = setTimeout(() => { try { localStorage.setItem(nbKey, JSON.stringify({ f: sc.scrollTop / Math.max(1, sc.scrollHeight) })); } catch { } }, 400); }, { passive: true });
+  }
   saveLast(); addEventListener('pagehide', saveLast); const _lt = setInterval(() => { if (current?.nb === notebook) saveLast(); else clearInterval(_lt); }, 15000);
   // la agenda se abre (tapa de cuero que gira) y Loona saluda
   const cover = h('div', { class: 'lo-open', 'aria-hidden': 'true' }, h('div', { class: 'lo-cover' }, h('b', {}, 'Loona')));

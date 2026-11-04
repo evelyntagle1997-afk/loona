@@ -10,12 +10,14 @@ import { mountLoona, greet } from './loona.js';
 const app = document.getElementById('app');
 const go = hash => { if (location.hash === hash) route(); else location.hash = hash; };
 
+let routed = false;
 async function route() {
   const raw = location.hash || '#/';
   const [path, q] = raw.split('?');
   const qs = new URLSearchParams(q || '');
   const parts = path.replace(/^#\/?/, '').split('/');
-  if (parts[0] !== 'e' && parts[0] !== 'c') leaveStudy();
+  if (parts[0] !== 'e' && parts[0] !== 'c') { if (routed) { try { localStorage.setItem('wasStudying', '0'); } catch { } } leaveStudy(); }
+  routed = true;
   try {
     if (parts[0] === 'm') await renderSubject(app, go, parts[1]);
     else if (parts[0] === 'e') await renderStudy(app, go, { pdfId: parts[1], nbId: qs.get('nb'), exportOnly: qs.get('export') });
@@ -35,6 +37,13 @@ addEventListener('pointerdown', () => { if (!/^#\/(e|c)\//.test(location.hash)) 
 addEventListener('hashchange', route);
 loadGoogleFonts();
 loadCustomFonts().catch(() => { });
+// al abrir la app: si la cerraste estudiando, vuelve sola al mismo PDF y cuaderno
+(() => {
+  try {
+    if (!/^#?\/?$/.test(location.hash) || localStorage.getItem('wasStudying') !== '1') return;
+    const l = JSON.parse(localStorage.getItem('lastStudy')); if (l?.hash) history.replaceState(null, '', l.hash);
+  } catch { }
+})();
 route();
 sync.start();
 import('./backup.js').then(b => b.init()).catch(() => { });   // respaldo automático en carpeta (si lo activaste)
