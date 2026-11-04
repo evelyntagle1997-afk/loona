@@ -102,7 +102,7 @@ async function speak0(text) {
   const M = await import('./music.js').catch(() => null);
   M?.duck(true, 'voz');   // la música baja suave mientras Loona habla
   try { await sayAI(s, text); }
-  catch (e) { console.warn(e); if (!speak0.warned) { speak0.warned = 1; toast('La voz de Loona no está disponible ahora; te respondo por escrito.', 3500); } }
+  catch (e) { console.warn(e); if (!speak0.warned) { speak0.warned = 1; toast(/cuota/.test(e.message) ? 'Se acabó la voz gratis de Loona por hoy (límite de Google). Te respondo por escrito; mañana vuelve.' : 'La voz de Loona no está disponible ahora; te respondo por escrito.', 5000); } }
   finally { M?.duck(false, 'voz'); }
 }
 export function bubble(text) {

@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 66;
+export const APP_VERSION = 67;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -206,13 +206,22 @@ async function medFact() {
   if (s.geminiKey) { try { const t = await L.aiText(s, 'Dame UN dato corto de biología o medicina que suela caer en el ENEM, en una sola frase, con tu actitud de Loona.'); if (t) return L.speak(t); } catch { } }
   L.speak(MED[Math.floor(Math.random() * MED.length)]);
 }
+// prueba la voz de Loona (modelos de voz de Gemini)
+async function testVoice(k) {
+  for (const m of ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts']) {
+    let r; try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(k)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'Hola' }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } } } }) }); } catch { return 'Voz: sin internet'; }
+    if (r.ok) return '✓ Voz: funciona';
+    if (r.status === 429) return '✗ Voz: se acabó el límite gratis de hoy';
+  }
+  return '✗ Voz: no disponible para esta clave';
+}
 // prueba la clave de Gemini y dice en palabras simples qué pasa
 async function testKey(k, model) {
   if (!k) return 'Falta pegar la clave';
   for (const m of [...new Set([model || 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash'])]) {
     let r; try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(k)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'Responde solo: ok' }] }] }) }); }
     catch { return 'Sin internet'; }
-    if (r.ok) return '✓ La clave funciona (' + m + ')';
+    if (r.ok) return '✓ Texto: funciona · ' + await testVoice(k);
     const t = await r.text();
     if (r.status === 404) continue;
     if (r.status === 429) return 'La clave funciona, pero llegaste al límite gratis por hoy';
