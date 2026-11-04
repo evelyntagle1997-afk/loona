@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 49;
+export const APP_VERSION = 50;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -343,7 +343,7 @@ export async function settings(tab = 'nube') {
     );
   } else if (tab === 'ia') {
     const key = h('input', { class: 'field', type: 'password', value: st.geminiKey || '', placeholder: 'Pega tu clave de Gemini' });
-    const model = h('input', { class: 'field', value: st.geminiModel || 'gemini-3.6-flash' });
+    const model = h('input', { class: 'field', value: st.geminiModel || 'gemini-3.8-flash' });
     const auto = h('input', { type: 'checkbox' }); auto.checked = st.aiAuto ?? true;
     body.append(
       h('p', {}, 'Sin clave, la app resume sola con reglas (detecta definiciones, fechas, lugares, causas, tipos…). Con una clave gratuita de Google Gemini, además reescribe el resumen más claro, te explica el tema con una analogía, un truco para memorizar y preguntas de repaso.'),
@@ -351,7 +351,7 @@ export async function settings(tab = 'nube') {
       h('label', { class: 'lbl' }, 'Modelo', model),
       h('label', { class: 'dp-tg' }, auto, h('span', { class: 'sw' }), 'Mejorar con IA automáticamente al terminar de subrayar un tema'),
       h('p', { class: 'opt-hint' }, 'La clave se guarda en tu dispositivo y en tu nube privada. El texto subrayado se envía a Google solo cuando se usa la IA.'),
-      h('div', { class: 'ie-row' }, h('button', { class: 'btn primary', onclick: async () => { await db.saveSettings({ geminiKey: key.value.trim(), geminiModel: model.value.trim() || 'gemini-3.6-flash', aiAuto: auto.checked }); toast('Ajustes de IA guardados'); m.close(); } }, 'Guardar')),
+      h('div', { class: 'ie-row' }, h('button', { class: 'btn primary', onclick: async () => { await db.saveSettings({ geminiKey: key.value.trim(), geminiModel: model.value.trim() || 'gemini-3.8-flash', aiAuto: auto.checked }); toast('Ajustes de IA guardados'); m.close(); } }, 'Guardar')),
     );
   } else if (tab === 'fuentes') {
     const list = h('ul', { class: 'font-own' }, ...(await db.all('font')).map(f => h('li', { style: { fontFamily: `'${f.family}'` } }, f.family)));

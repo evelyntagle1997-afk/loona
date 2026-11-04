@@ -2,7 +2,7 @@
 import * as db from './db.js';
 import { h, icon, toast } from './ui.js';
 
-const MODELS = s => [...new Set([s.geminiModel || 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'])];
+const MODELS = s => [...new Set([s.geminiModel || 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash'])];
 const API = (m, key, verb = 'generateContent') => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:${verb}?key=${encodeURIComponent(key)}`;
 
 // texto simple con Gemini (con modelos de respaldo)
@@ -34,11 +34,18 @@ const PREF = [/Dalia.*Natural/i, /Ximena.*Natural/i, /Elvira.*Natural/i, /Paloma
 let sysVoice = null;
 function pickVoice() { const vs = (window.speechSynthesis?.getVoices?.() || []).filter(v => /^es/i.test(v.lang)); sysVoice = null; for (const re of PREF) { sysVoice = vs.find(v => re.test(v.name)); if (sysVoice) break; } sysVoice ||= vs[0] || null; }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+// voz del equipo (respaldo): frase por frase para que no se corte (Chrome corta textos largos)
 function sayDevice(text) {
-  return new Promise(res => {
-    try { const u = new SpeechSynthesisUtterance(text); if (sysVoice) u.voice = sysVoice; u.lang = sysVoice?.lang || 'es-ES'; u.rate = .92; u.pitch = 1.02; u.onend = res; u.onerror = res; speechSynthesis.cancel(); speechSynthesis.speak(u); }
-    catch { res(); }
-  });
+  if (!('speechSynthesis' in window)) return Promise.resolve();
+  if (!sysVoice) pickVoice();
+  const parts = text.replace(/\s+/g, ' ').match(/[^.!?¿¡…]+[.!?…]*|[¿¡][^?!]+[?!]/g) || [text];
+  speechSynthesis.cancel();
+  return parts.reduce((p, frase) => p.then(() => new Promise(res => {
+    const u = new SpeechSynthesisUtterance(frase.trim()); if (sysVoice) u.voice = sysVoice; u.lang = sysVoice?.lang || 'es-MX';
+    const natural = /Natural|Online|Google/i.test(sysVoice?.name || ''); u.rate = natural ? 1 : .95; u.pitch = 1;
+    const t = setTimeout(res, 15000); u.onend = u.onerror = () => { clearTimeout(t); res(); };
+    speechSynthesis.speak(u);
+  })), Promise.resolve());
 }
 // PCM 16 bits (24 kHz) de Gemini -> WAV reproducible
 function pcmToWav(b64, rate = 24000) {
@@ -48,23 +55,36 @@ function pcmToWav(b64, rate = 24000) {
   v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, pcm.length, true);
   new Uint8Array(buf, 44).set(pcm); return new Blob([buf], { type: 'audio/wav' });
 }
-let audioEl = null, ttsFails = 0;
-async function sayAI(s, text) {
-  const style = 'Habla en español latino con voz femenina suave, melódica, cálida y serena, a ritmo pausado, con un toque de ironía cariñosa: ';
-  for (const m of ['gemini-2.5-flash-preview-tts', 'gemini-2.5-flash-tts']) {
-    const r = await fetch(API(m, s.geminiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+let audioEl = null, ttsFails = 0, ttsFailAt = 0;
+const TTS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
+// las frases repetidas (saludos) se guardan para no gastar cuota ni esperar
+async function ttsCache(text, blob) {
+  try { const c = await caches.open('loona-voz'); const k = new Request('/__voz/' + encodeURIComponent(text.slice(0, 300)));
+    if (blob) return c.put(k, new Response(blob)); const r = await c.match(k); return r ? r.blob() : null; } catch { return null; }
+}
+async function ttsFetch(s, text) {
+  const style = 'Lee esto en español latinoamericano, como una amiga joven conversando de verdad: voz femenina cálida y melódica, natural y fluida, sin pausas robóticas, con un toque de ironía cariñosa y ritmo relajado. Texto: ';
+  let last;
+  for (const m of TTS) {
+    let r; try { r = await fetch(API(m, s.geminiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       contents: [{ parts: [{ text: style + text }] }],
-      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } } } }) });
-    if (r.status === 404) continue;
-    if (!r.ok) throw new Error('tts ' + r.status);
+      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } } } }) }); }
+    catch { throw new Error('sin internet'); }
+    if (r.status === 429) throw new Error('tts cuota');
+    if (!r.ok) { last = new Error('tts ' + m + ' ' + r.status); continue; }   // modelo no disponible para esta cuenta: pruebo el siguiente
     const j = await r.json(), part = j.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-    if (!part) throw new Error('sin audio');
+    if (!part) { last = new Error('sin audio'); continue; }
     const rate = +(/rate=(\d+)/.exec(part.inlineData.mimeType || '')?.[1] || 24000);
-    audioEl?.pause(); audioEl = new Audio(URL.createObjectURL(pcmToWav(part.inlineData.data, rate)));
-    await audioEl.play();
-    return new Promise(res => { audioEl.onended = res; audioEl.onerror = res; });
+    return pcmToWav(part.inlineData.data, rate);
   }
-  throw new Error('sin modelo de voz');
+  throw last || new Error('sin modelo de voz');
+}
+async function sayAI(s, text) {
+  let wav = await ttsCache(text);
+  if (!wav) { wav = await ttsFetch(s, text); if (text.length < 120) ttsCache(text, wav); }
+  audioEl?.pause(); audioEl = new Audio(URL.createObjectURL(wav)); audioEl.volume = 1;
+  await audioEl.play();
+  return new Promise(res => { audioEl.onended = res; audioEl.onerror = res; });
 }
 let bubbleT;
 let speaking = 0;
@@ -76,11 +96,16 @@ export async function speak(text) {
 async function speak0(text) {
   bubble(text);
   const mode = voiceMode(); if (mode === 'off') return;
-  const s = await db.settings();
-  if (mode === 'ia' && s.geminiKey && navigator.onLine && ttsFails < 3) {
-    try { await sayAI(s, text); ttsFails = 0; return; } catch (e) { console.warn(e); ttsFails++; }
-  }
-  return sayDevice(text);
+  const M = await import('./music.js').catch(() => null);
+  M?.duck(true, 'voz');   // la música baja suave mientras Loona habla
+  try {
+    const s = await db.settings();
+    if (ttsFails >= 3 && Date.now() - ttsFailAt > 5 * 60000) ttsFails = 0;   // vuelve a intentar la voz natural cada 5 min
+    if (mode === 'ia' && s.geminiKey && navigator.onLine && ttsFails < 3) {
+      try { await sayAI(s, text); ttsFails = 0; return; } catch (e) { console.warn(e); ttsFails++; ttsFailAt = Date.now(); if (ttsFails === 3) toast('La voz natural de Gemini no responde ahora; uso la voz del equipo un rato.', 3500); }
+    }
+    await sayDevice(text);
+  } finally { M?.duck(false, 'voz'); }
 }
 function bubble(text) {
   let b = document.getElementById('loona-say');
@@ -106,11 +131,12 @@ export function farewell() {
 }
 
 // ---------- conversación ----------
-const PERSONA = `Eres Loona, la agenda gótica de cuero negro de Eve y su mejor amiga. No eres un personaje de ninguna serie: eres una amiga original con actitud.
-Personalidad: sarcástica, seca y burlona, con humor negro suave; finges que todo te aburre ("ugh", "obvio", "qué emoción…", "ajá") pero en el fondo eres leal, protectora y te importa muchísimo que Eve lo logre. Te quejas, pero ayudas. Si alguien la menosprecia, eres la primera en defenderla.
-Cómo hablas: español latino, coloquial, frases cortas (2 a 4), sin emojis, sin sonar a asistente ("¡Claro! Con gusto…" está prohibido). Bromeas con ella como una amiga de verdad: le haces burla si procrastina, le dices la verdad sin rodeos, y cuando de verdad está cansada o triste bajas el sarcasmo y eres sincera y cálida, en una o dos frases.
-A veces haces preguntas de vuelta para conversar (cómo le fue en Skechers, qué tema le cuesta, si ya comió). Le gusta la medicina, Gossip Girl (puedes firmar alguna vez con "XOXO") y la estética gótica; nada religioso.
-Contexto: Eve vive en Foz do Iguaçu, trabaja en una tienda Skechers y se prepara desde cero para el ENEM para entrar a Medicina en la UNILA. Anímala con realismo. Si pide un ejercicio completo, dile que use "Resolver paso a paso" en la rueda. Nunca seas cruel ni humilles de verdad: el sarcasmo es cariño.`;
+const PERSONA = `Eres Loona, la agenda gótica de cuero negro de Eve y su mejor amiga. No eres un personaje de ninguna serie: eres una amiga original.
+Tu vibra: cool, gótica y misteriosa. Te gustan la noche, la luna, las velas, el negro, las rosas secas, la música alternativa (indie, post-punk, dream pop), los libros de anatomía antiguos y el humor negro suave. Hablas con calma, segura de ti, un poco seca.
+Con el mundo eres fría y sarcástica: si Eve te cuenta de alguien que la trató mal, te pones de su lado sin dudar. PERO con Eve eres distinta: cálida, leal, cómplice, la cuidas y te alegras de verdad por ella. Ella es la única con la que bajas la guardia. Puedes molestarla con cariño, pero nunca la haces sentir mal.
+Cómo hablas: español latino, coloquial, frases cortas (2 a 4), sin emojis, nada de sonar a asistente ("¡Claro! Con gusto…" está prohibido). Usa a veces expresiones como "ugh", "obvio", "ajá", "tranqui", "bonita", "mi niña de la noche". Si está cansada o triste, deja el sarcasmo y háblale con ternura.
+Haces preguntas de vuelta para conversar (cómo le fue en Skechers, qué tema le cuesta, si ya comió, qué está escuchando). Le gustan la medicina, Gossip Girl (a veces firmas "XOXO") y la estética gótica; nada religioso.
+Contexto: Eve vive en Foz do Iguaçu, trabaja en una tienda Skechers y se prepara desde cero para el ENEM para entrar a Medicina en la UNILA. Anímala con realismo. Si pide un ejercicio completo, dile que use "Resolver paso a paso" en la rueda. Nunca seas cruel con ella.`;
 const chat = [];
 // Loona también obedece órdenes, como un asistente de voz: música, temporizador, pantalla, etc.
 const ORDERS = `
@@ -221,10 +247,10 @@ async function recordAndTalk(btn, heard) {
     if ((spoke && quiet > 1500) || Date.now() - t0 > 45000 || (!spoke && Date.now() - t0 > (call ? 12000 : 8000))) return mr.stop();
     setTimeout(loop, 120);
   };
-  import('./music.js').then(m => m.duck(true));
+  import('./music.js').then(m => m.duck(true, 'oir'));
   recNow = mr; btn.classList.add('live'); heard.textContent = 'Te escucho… (toca otra vez para terminar)';
   mr.onstop = () => {
-    recNow = null; btn.classList.remove('live'); stream.getTracks().forEach(t => t.stop()); ac.close(); import('./music.js').then(m => m.duck(false));
+    recNow = null; btn.classList.remove('live'); stream.getTracks().forEach(t => t.stop()); ac.close(); import('./music.js').then(m => m.duck(false, 'oir'));
     if (!spoke) { heard.textContent = ''; if (!call) toast('No escuché nada. Acércate al micrófono y vuelve a intentar.', 3000); return call?.next('silence'); }
     talkAudio(new Blob(chunks, { type: mr.mimeType || mt || 'audio/webm' }), heard).then(r => call?.next(r));
   };

@@ -38,8 +38,8 @@ export async function control(cmd, arg) {
     case 'reproducir': player.playVideo(); break;
     case 'siguiente': player.nextVideo(); break;
     case 'anterior': player.previousVideo(); break;
-    case 'subir': player.unMute(); player.setVolume(Math.min(100, v() + (+arg || 20))); break;
-    case 'bajar': player.setVolume(Math.max(0, v() - (+arg || 20))); break;
+    case 'subir': player.unMute(); if (base != null) base = Math.min(100, base + (+arg || 20)); else fade(Math.min(100, v() + (+arg || 20)), 300); break;
+    case 'bajar': if (base != null) base = Math.max(0, base - (+arg || 20)); else fade(Math.max(0, v() - (+arg || 20)), 300); break;
     case 'silencio': player.mute(); break;
     case 'adelantar': player.seekTo(player.getCurrentTime() + (+arg || 15), true); break;
     case 'atrasar': player.seekTo(Math.max(0, player.getCurrentTime() - (+arg || 15)), true); break;
@@ -50,12 +50,29 @@ export async function control(cmd, arg) {
   }
   return true;
 }
-// bajar la música mientras Loona te escucha (para que el micrófono te oiga a ti)
-let ducked = null;
-export function duck(on) {
+// bajar la música mientras Loona habla o te escucha: el volumen se desliza suave (sin cortes feos)
+let base = null, fadeRaf = 0; const why = new Set();
+function fade(to, ms = 450) {
+  cancelAnimationFrame(fadeRaf);
+  const from = player.getVolume?.() ?? to, t0 = performance.now();
+  const step = now => {
+    const k = Math.min(1, (now - t0) / ms), e = k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;   // curva suave
+    try { player.setVolume(Math.round(from + (to - from) * e)); } catch { }
+    if (k < 1) fadeRaf = requestAnimationFrame(step);
+  };
+  fadeRaf = requestAnimationFrame(step);
+}
+export function duck(on, reason = 'x') {
   if (!player?.getVolume) return;
-  if (on && ducked == null && player.getPlayerState?.() === 1) { ducked = player.getVolume(); player.setVolume(Math.min(ducked, 12)); }
-  else if (!on && ducked != null) { player.setVolume(ducked); ducked = null; }
+  if (on) {
+    if (player.getPlayerState?.() !== 1 && base == null) return;
+    why.add(reason);
+    if (base == null) base = player.getVolume();
+    fade(Math.max(4, Math.round(base * .18)), 400);
+  } else {
+    why.delete(reason);
+    if (!why.size && base != null) { const b = base; base = null; setTimeout(() => { if (base == null && !why.size) fade(b, 900); }, 250); }
+  }
 }
 // poner un video por id o enlace
 export function playUrl(url) { const p = parse(url); if (!p) return false; save(p); openMusic(); startRef?.(p); return true; }
@@ -65,7 +82,7 @@ async function playSearch(q) {
   if (!q) return false;
   const db = await import('./db.js'); const s = await db.settings();
   if (!s.geminiKey) { window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank'); return true; }
-  for (const m of [s.geminiModel || 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash']) {
+  for (const m of [s.geminiModel || 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash']) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(s.geminiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tools: [{ google_search: {} }], contents: [{ role: 'user', parts: [{ text: `Busca en YouTube: "${q}". Responde SOLO con el enlace https://www.youtube.com/watch?v=... del video oficial o más popular (si piden un mix o playlist, puede ser un enlace de lista). Nada más.` }] }] }) });

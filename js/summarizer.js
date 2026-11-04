@@ -139,7 +139,7 @@ Devuelve SOLO JSON con esta forma:
  "preguntas": [{"q": "pregunta de repaso", "a": "respuesta corta"}],
  "stickers": ["2 a 4 palabras clave del tema en español para elegir ilustraciones"]}
 Reglas: LO MÁS CONCISO POSIBLE. Estilo apunte telegráfico: 'Concepto: idea clave', sin artículos ni relleno, máx 12 palabras por item; une fragmentos repetidos en un solo item; corrige errores de lectura (OCR) del texto escaneado. No inventes datos que no estén en los fragmentos salvo en explicacion/analogia (máx 2 frases cortas). Mantén el nivel de importancia que puso la estudiante.`;
-  const models = [model || 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+  const models = [model || 'gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash'];
   let lastErr;
   for (const m of [...new Set(models)]) {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
@@ -165,12 +165,12 @@ Reglas: LO MÁS CONCISO POSIBLE. Estilo apunte telegráfico: 'Concepto: idea cla
 // Lee el texto de una imagen (PDF escaneado) con Gemini
 export async function aiOcr({ key, model, dataUrl, prompt }) {
   const b64 = dataUrl.split(',')[1];
-  for (const m of [...new Set([model || 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'])]) {
+  for (const m of [...new Set([model || 'gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash'])]) {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ role: 'user', parts: [{ inline_data: { mime_type: 'image/png', data: b64 } }, { text: prompt || 'Transcribe exactamente el texto en español de esta imagen recortada de un libro escaneado. Devuelve solo el texto, sin comillas ni comentarios. Une las palabras cortadas con guion al final del renglón.' }] }], generationConfig: { temperature: 0 } }),
     });
-    if (r.status === 404) continue;
+    if (r.status === 404 || (r.status >= 400 && r.status < 500 && r.status !== 429 && r.status !== 401)) continue;
     if (!r.ok) throw new Error('Gemini ' + r.status);
     const j = await r.json();
     return j.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim() || '';

@@ -111,7 +111,7 @@ Devuelve SOLO JSON:
 Segmentos de 20 a 60 segundos. No inventes nada que no se haya dicho.`;
   try {
     let data = null, last;
-    for (const m of [...new Set([s.geminiModel || 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'])]) {
+    for (const m of [...new Set([s.geminiModel || 'gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash'])]) {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(s.geminiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: (blob.type || 'audio/webm').split(';')[0], data: await blobB64(blob) } }, { text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: .2 } }) });
       if (r.status === 404) continue;
