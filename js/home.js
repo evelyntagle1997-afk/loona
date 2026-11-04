@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 78;
+export const APP_VERSION = 79;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -100,7 +100,7 @@ export async function renderHome(app, go0) {
     P('ag-page', 52, 12, 35, 75, idx, agendaSec, loonaSec),
     h('div', { class: 'ag-tabs', role: 'tablist', 'aria-label': 'Separadores' }, ...TABS.map(([k, label], i) =>
       h('button', { class: 'ag-tabl' + (i === 0 ? ' on' : ''), role: 'tab', 'data-k': k, style: { top: (16 + i * 13) + '%' }, onclick: e => { e.stopPropagation(); flipTo(k); } }, h('span', {}, label)))),
-    h('div', { class: 'ag-flip', 'aria-hidden': 'true' }, h('div', { class: 'agf-front' }), h('div', { class: 'agf-back' })),
+    h('div', { class: 'ag-flip', role: 'button', 'aria-label': 'Pasar la hoja' }, h('div', { class: 'agf-front' }, h('span', { class: 'agf-hint' }, 'Toca para pasar la hoja')), h('div', { class: 'agf-back' })),
     h('span', { class: 'ag-word', 'aria-hidden': 'true' }, 'Loona'),
     h('span', { class: 'ag-light', 'aria-hidden': 'true' }),
     h('span', { class: 'ag-grain', 'aria-hidden': 'true' }),
@@ -325,15 +325,23 @@ export function openAgenda() {
     sc?.classList.remove('closed'); sc?.classList.add('left');   // las tarjetas ya escritas desde que se abre la tapa
     setTimeout(() => {
       c.classList.remove('opening'); c.classList.add('open');
-      const f = sc?.querySelector('.ag-flip'); if (f) { f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn'); }   // 3) pasa la primera hoja
-      setTimeout(() => sc?.classList.add('shown'), 420);   // 4) entra el contenido
-      setTimeout(() => { f?.classList.remove('turn'); r(); }, 950);
+      // 3) la primera hoja espera: se pasa cuando tú la tocas
+      const f = sc?.querySelector('.ag-flip'); if (!f) { sc?.classList.add('shown'); return r(); }
+      f.classList.add('wait');
+      const turn = e => {
+        e?.stopPropagation(); f.removeEventListener('click', turn); f.classList.remove('wait');
+        f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn');
+        setTimeout(() => sc.classList.add('shown'), 420);   // 4) entra el contenido
+        setTimeout(() => f.classList.remove('turn'), 950);
+      };
+      f.addEventListener('click', turn);
+      r();
     }, 1100);
   }, 380));
 }
 export function closeAgenda() {
   const c = coverEl(); if (!c || reduce()) return Promise.resolve();
-  c.closest('.agenda')?.classList.remove('shown', 'left');
+  c.closest('.agenda')?.classList.remove('shown', 'left'); c.closest('.agenda')?.querySelector('.ag-flip')?.classList.remove('wait');
   c.classList.remove('open', 'opening'); c.classList.add('closing');
   setTimeout(() => c.closest('.agenda')?.classList.add('closed'), 380);
   return new Promise(r => setTimeout(() => { c.classList.remove('closing'); c.classList.add('shut'); r(); }, 750));

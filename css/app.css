@@ -1559,3 +1559,8 @@ html.lite .ag-vp::before { animation: none; }
 @media (prefers-reduced-motion: reduce) { .agc-hint { animation: none; } }
 /* v78 al abrir, las tarjetas y recuerdos ya aparecen escritos (nunca en blanco) */
 .agenda.left .ag-note, .agenda.left .ag-card, .agenda.left .ag-deco:not(.ag-sello) { opacity: 1 !important; translate: none !important; transition-delay: 0s !important; transition-duration: .15s !important; }
+/* v79 la primera hoja espera a que la toques */
+.ag-flip.wait { visibility: visible; pointer-events: auto; cursor: pointer; }
+.agf-hint { position: absolute; left: 0; right: 0; bottom: 6%; text-align: center; font: 500 .9cqw system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.7); text-shadow: 0 1px 4px rgba(0,0,0,.6); opacity: 0; }
+.ag-flip.wait .agf-hint { opacity: 1; animation: hintp 2.4s ease-in-out infinite; }
+@media (hover: hover) { .ag-flip.wait:hover { transform: rotateY(-8deg); transition: transform .35s var(--ease-out); } }
