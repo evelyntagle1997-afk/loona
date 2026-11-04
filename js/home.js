@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 74;
+export const APP_VERSION = 75;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -96,7 +96,6 @@ export async function renderHome(app, go0) {
     h('img', { class: 'ag-z ag-clipimg', src: 'img/clip.webp', alt: '', draggable: false, style: { left: '24.4%', top: '0%', width: '7.4%' } }),
     hot('ag-clip', 24.8, 0.5, 6.8, 16, 'Clip: tu cuenta en la nube y copia', () => settings('nube')),
     hot('ag-rings', 46.6, 9, 5.4, 82, 'Argollas: ajustes de la IA', () => settings('ia')),
-    hot('ag-tab', 88, 27, 2.6, 12.5, 'Pestaña: mi agenda', () => import('./agenda.js').then(m => m.openAgendaView())),
     hot('ag-strap', 91, 40.5, 7.2, 16, 'Broche: cerrar o abrir la agenda', () => toggleAgenda()),
     P('ag-page', 52, 12, 35, 75, idx, agendaSec, loonaSec),
     h('div', { class: 'ag-tabs', role: 'tablist', 'aria-label': 'Separadores' }, ...TABS.map(([k, label], i) =>
