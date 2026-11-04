@@ -8,6 +8,7 @@ import { Wheel } from './wheel.js';
 import { modal } from './ui.js';
 
 let current = null;
+export const getCurrent = () => current;   // Loona lo usa para escribir en tu cuaderno o subrayar el PDF
 export function leaveStudy() { current?.pdf?.destroy(); current?.nb?.destroy(); current?.wheels?.forEach(w => w.destroy()); current = null; }
 
 export async function renderStudy(app, go, { pdfId, nbId, exportOnly }) {

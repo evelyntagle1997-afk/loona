@@ -3,7 +3,7 @@
 // disponible para tu clave, la app usa la conversación normal.
 import * as db from './db.js';
 import { toast } from './ui.js';
-import { PERSONA, nowCtx, doAction, memCtx, rememberTurn } from './loona.js';
+import { PERSONA, nowCtx, doAction, memCtx, rememberTurn, visual, refreshAgendaCtx } from './loona.js';
 
 const MODELS = ['gemini-3.8-live', 'gemini-3.1-flash-live-preview', 'gemini-2.5-flash-native-audio-preview-12-2025'];
 const WS = key => `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(key)}`;
@@ -14,6 +14,14 @@ const ORDER_TOOL = {
     parameters: { type: 'OBJECT', properties: {
       orden: { type: 'STRING', enum: ['pausar', 'reproducir', 'siguiente', 'anterior', 'subir', 'bajar', 'silencio', 'adelantar', 'atrasar', 'cerrar_musica', 'solo_video', 'mostrar_botones', 'buscar', 'temporizador', 'detener_temporizador', 'pantalla_completa', 'inicio', 'colgar'] },
       detalle: { type: 'STRING', description: 'Para buscar: canción o artista. Para temporizador: minutos.' } }, required: ['orden'] },
+  }, {
+    name: 'agenda',
+    description: 'Crea, cambia o borra eventos de la agenda de Eve. Fechas en formato YYYY-MM-DDTHH:mm:ss calculadas desde la fecha actual. Primera hora 09:00; duraciones por defecto: reunión 30 min, comida 90, cita/estudio 60, tarea 15.',
+    parameters: { type: 'OBJECT', properties: { action: { type: 'STRING', enum: ['create_event', 'update_event', 'delete_event'] }, title: { type: 'STRING' }, start_time: { type: 'STRING' }, end_time: { type: 'STRING' }, category: { type: 'STRING', enum: ['trabajo', 'personal', 'salud', 'estudio', 'ocio'] }, location: { type: 'STRING' } }, required: ['action', 'title'] },
+  }, {
+    name: 'nota',
+    description: 'Pone una nota visual en el cuaderno (post-it o nota al margen) o subraya lo seleccionado en el PDF.',
+    parameters: { type: 'OBJECT', properties: { action: { type: 'STRING', enum: ['create_note', 'add_margin_comment', 'highlight_pdf'] }, color: { type: 'STRING', enum: ['yellow', 'pink', 'blue', 'green', 'kraft'] }, content: { type: 'STRING' }, position_hint: { type: 'STRING', enum: ['top-left', 'top-right', 'bottom-right', 'margin-left', 'margin-right'] } }, required: ['action'] },
   }],
 };
 
@@ -47,6 +55,7 @@ function connect(key, setup) {
 
 export async function startLive({ firstText = '', onEnd } = {}) {
   if (S) return S;
+  await refreshAgendaCtx();
   const st = await db.settings();
   if (!st.geminiKey) throw new Error('Necesito tu clave de Gemini (botón IA del inicio).');
   let mic;
@@ -105,7 +114,11 @@ export async function startLive({ firstText = '', onEnd } = {}) {
       const res = [];
       for (const fc of m.toolCall.functionCalls) {
         const a = fc.args || {}; let r = 'ok';
-        try { const out = await doAction(a.orden + (a.detalle ? ': ' + a.detalle : '')); if (out === 'bye') { setTimeout(() => stopLive(), 2500); } } catch (e) { r = 'error: ' + e.message; }
+        try {
+          if (fc.name === 'agenda') { const { action, ...data } = a; r = (await (await import('./agenda.js')).apply({ action, data })) || 'ok'; }
+          else if (fc.name === 'nota') await visual({ action: a.action, visual_element: { type: a.action === 'add_margin_comment' ? 'margin_note' : 'post_it', color: a.color, content: a.content, position_hint: a.position_hint } });
+          else { const out = await doAction(a.orden + (a.detalle ? ': ' + a.detalle : '')); if (out === 'bye') setTimeout(() => stopLive(), 2500); }
+        } catch (e) { r = 'error: ' + e.message; }
         res.push({ id: fc.id, name: fc.name, response: { result: r } });
       }
       if (ws.readyState === 1) ws.send(JSON.stringify({ toolResponse: { functionResponses: res } }));

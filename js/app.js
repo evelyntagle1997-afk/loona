@@ -57,3 +57,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.ser
 if (navigator.storage?.persist) navigator.storage.persist();
 
 import('./home.js').then(m => m.pomoTick?.());
+
+import('./agenda.js').then(m => m.startReminders()).catch(() => { });

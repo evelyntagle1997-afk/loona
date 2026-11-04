@@ -172,6 +172,12 @@ const ORDERS = `
 Además de conversar, puedes hacer cosas en la app. Si Eve te pide algo de esta lista, agrega al final UNA línea:
 ACCION: <orden>
 Si te pide un chiste o un cuento, NO uses ACCION: solo cuéntalo.
+AGENDA: si Eve quiere agendar, mover, borrar o consultar algo de su agenda, agrega UNA línea:
+EVENTO: {"action":"create_event|update_event|delete_event|query","data":{"title":"...","start_time":"YYYY-MM-DDTHH:mm:ss","end_time":"YYYY-MM-DDTHH:mm:ss o null","category":"trabajo|personal|salud|estudio|ocio","location":null,"is_all_day":false}}
+Reglas: calcula fechas relativas desde la fecha actual que te doy ("mañana", "el próximo viernes"); "primera hora" = 09:00, "última hora de la tarde" = 18:00. Si no dice duración: reunión/llamada 30 min, almuerzo/comida/cena 90 min, cita médica/estudio 60 min, tarea o recordatorio 15 min. Si choca con algo que ya tiene, o el día está muy lleno, avísale en tu respuesta ("Ese martes ya está a reventar, ¿segura?"). Para consultas (query) responde mirando su agenda.
+NOTAS VISUALES: si Eve te pide anotar algo, dejar un post-it, una nota al margen o subrayar el PDF, agrega UNA línea:
+NOTA: {"action":"create_note|highlight_pdf|add_margin_comment","visual_element":{"type":"post_it|margin_note|pdf_highlight|notebook_page","color":"yellow|pink|blue|green|kraft","content":"texto corto y limpio","position_hint":"top-left|top-right|bottom-right|margin-left|margin-right|current_pdf_selection"}}
+El texto de la nota va corto (máx. 140 caracteres). Tu respuesta hablada en esos casos es brevísima ("Anotado.", "Listo, en amarillo.").
 Órdenes posibles: pausar | reproducir | siguiente | anterior | subir | bajar | silencio | adelantar | atrasar | cerrar_musica | solo_video | mostrar_botones | buscar: <canción o artista> | temporizador: <minutos> | detener_temporizador | pantalla_completa | inicio | colgar
 Ejemplos: "pausa el video" -> ACCION: pausar; "pon Arctic Monkeys" -> ACCION: buscar: Arctic Monkeys Do I Wanna Know; "súbele" -> ACCION: subir; "25 minutos de estudio" -> ACCION: temporizador: 25; "chau" -> ACCION: colgar.
 Si no te pide nada de eso, no escribas la línea ACCION. Cuando hagas una orden, tu respuesta es cortita y con tu actitud ("Ya, pausado. Ahora estudia.").`;
@@ -190,13 +196,58 @@ export async function doAction(a) {
 }
 // qué está estudiando Eve ahora mismo (para que Loona hable con contexto)
 export { memCtx };
-export function nowCtx() {
+export function nowCtx() { return nowCtx0() + (agendaTxt || ''); }
+let agendaTxt = '';
+export async function refreshAgendaCtx() { try { agendaTxt = await (await import('./agenda.js')).agendaCtx(); } catch { } }
+function nowCtx0() {
   if (!/^#\/(e|s|n)/.test(location.hash)) return '';
   let l = null; try { l = JSON.parse(localStorage.getItem('lastStudy')); } catch { }
   return l ? `\nAhora mismo Eve está estudiando: «${l.title}»${l.subject ? ' (materia: ' + l.subject + ')' : ''}${l.page ? ', página ' + l.page : ''}. Si pregunta por "esto" o "este tema", se refiere a eso.` : '';
 }
-const splitAction = out => { const m = out.match(/\n?\s*ACCION:\s*(.+)\s*$/i); return m ? [out.slice(0, m.index).trim(), m[1].trim()] : [out.trim(), null]; };
+// separa la respuesta hablada de las órdenes (ACCION, EVENTO, NOTA)
+const splitAction = out => {
+  let text = out, act = null;
+  const grab = re => { const m = text.match(re); if (!m) return null; text = (text.slice(0, m.index) + text.slice(m.index + m[0].length)).trim(); return m[1].trim(); };
+  const ev = grab(/\n?\s*EVENTO:\s*(\{[\s\S]*?\})\s*(?=\n[A-Z]+:|$)/i), nota = grab(/\n?\s*NOTA:\s*(\{[\s\S]*?\})\s*(?=\n[A-Z]+:|$)/i);
+  act = grab(/\n?\s*ACCION:\s*(.+)\s*$/i);
+  if (ev) try { pending.ev = JSON.parse(ev); } catch (e) { console.warn('evento', e); }
+  if (nota) try { pending.nota = JSON.parse(nota); } catch (e) { console.warn('nota', e); }
+  return [text.trim(), act];
+};
+const pending = {};
+// ejecuta lo que quedó pendiente de la última respuesta (agenda y notas visuales)
+async function runPending() {
+  let warn = '';
+  if (pending.ev) { const ev = pending.ev; pending.ev = null; try { warn = await (await import('./agenda.js')).apply(ev); } catch (e) { console.warn(e); } }
+  if (pending.nota) { const n = pending.nota; pending.nota = null; try { await visual(n); } catch (e) { console.warn(e); toast('No pude poner la nota: ' + e.message, 3000); } }
+  return warn;
+}
+// notas visuales: post-it en tu cuaderno, nota al margen o subrayado del PDF
+const POS = { 'top-left': [50, 70], 'top-right': [470, 70], 'bottom-right': [470, 860], 'margin-left': [12, 420], 'margin-right': [560, 420] };
+export async function visual(n) {
+  const v = n.visual_element || {}, txt = (v.content || '').slice(0, 160);
+  const S = (await import('./study.js')).getCurrent?.();
+  if (n.action === 'highlight_pdf' || v.type === 'pdf_highlight') {
+    if (!S?.pdf) return toast('Abre un PDF y selecciona el texto para que lo subraye.', 3000);
+    const lvl = { yellow: 1, pink: 2, blue: 3, green: 4, kraft: 5 }[v.color] || 1;
+    if (!String(getSelection?.() || '').trim()) return toast('Selecciona el texto en el PDF y vuelve a pedírmelo.', 3000);
+    return S.pdf.highlightSelection(lvl);
+  }
+  if (!S?.nb) {   // fuera del cuaderno: va a la nota del clip en la agenda
+    try { localStorage.setItem('homeNote', txt.slice(0, 80)); } catch { }
+    const el = document.querySelector('.ag-xo'); if (el) el.textContent = txt.slice(0, 80);
+    return;
+  }
+  const nb = S.nb, pg = nb.pages[nb.curPageIndex()]; if (!pg) return;
+  const margin = n.action === 'add_margin_comment' || v.type === 'margin_note';
+  const pdfPage = S.pdf?.currentPage?.();
+  const [x, y] = POS[v.position_hint] || (margin ? POS['margin-right'] : POS['top-right']);
+  const color = ['yellow', 'pink', 'blue', 'green', 'kraft'].includes(v.color) ? v.color : 'yellow';
+  const body = (margin && pdfPage ? `pág. ${pdfPage}: ` : '') + txt;
+  await nb.addEl(pg, { type: 'text', x, y: y + Math.round(Math.random() * 30), w: margin ? 210 : 250, h: 0, html: body.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])), font: 'Kalam', size: 22, color: '#2a2627', style: 'postit-' + color, align: 'left', rot: margin ? 0 : (Math.random() * 6 - 3) });
+}
 export async function talk(text) {
+  await refreshAgendaCtx();
   const s = await db.settings();
   const t = text.toLowerCase();
   if (/qué hora|que hora/.test(t)) return speak('Son las ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) + '.');
@@ -205,13 +256,15 @@ export async function talk(text) {
     const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx() + await memCtx(), fast: true }));
     rememberTurn(text, ans);
     const r = await doAction(act);
-    await speak(ans || 'Listo.');
+    const warn = await runPending();
+    await speak((ans || 'Listo.') + (warn && !ans.includes('choca') ? ' ' + warn : ''));
     return r === 'bye' || /\b(adi[oó]s|chau|chao|bye|nos vemos|cuelgo|colgar)\b/i.test(text) ? 'bye' : 'ok';
   } catch (e) { return speak(e.message); }
 }
 
 // Conversar mandando tu voz directo a Gemini (cuando el dictado del navegador no funciona)
 async function talkAudio(blob, heard, { wake = false } = {}) {
+  await refreshAgendaCtx();
   const s = await db.settings();
   if (!s.geminiKey) { heard.textContent = ''; return speak('Para escucharte necesito tu clave de Gemini. Ponla en el botón IA del inicio.'); }
   heard.textContent = 'Pensando…';
@@ -223,7 +276,7 @@ async function talkAudio(blob, heard, { wake = false } = {}) {
     if (/^\s*IGNORAR\b/i.test(out)) { heard.textContent = ''; return 'ignored'; }
     const dijo = (out.match(/DIJO:\s*(.*)/i) || [])[1]?.trim() || '';
     const [ans, act] = splitAction(((out.match(/LOONA:\s*([\s\S]*)/i) || [])[1] || out).trim());
-    const r = await doAction(act);
+    const r = await doAction(act); await runPending();
     heard.textContent = dijo ? '«' + dijo + '»' : '';
     rememberTurn(dijo || '(audio)', ans);
     await speak(ans || 'Listo.');
