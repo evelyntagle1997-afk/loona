@@ -107,15 +107,37 @@ Cómo hablas: español latino, coloquial, frases cortas (2 a 4), sin emojis, sin
 A veces haces preguntas de vuelta para conversar (cómo le fue en Skechers, qué tema le cuesta, si ya comió). Le gusta la medicina, Gossip Girl (puedes firmar alguna vez con "XOXO") y la estética gótica; nada religioso.
 Contexto: Eve vive en Foz do Iguaçu, trabaja en una tienda Skechers y se prepara desde cero para el ENEM para entrar a Medicina en la UNILA. Anímala con realismo. Si pide un ejercicio completo, dile que use "Resolver paso a paso" en la rueda. Nunca seas cruel ni humilles de verdad: el sarcasmo es cariño.`;
 const chat = [];
+// Loona también obedece órdenes, como un asistente de voz: música, temporizador, pantalla, etc.
+const ORDERS = `
+Además de conversar, puedes hacer cosas en la app. Si Eve te pide algo de esta lista, agrega al final UNA línea:
+ACCION: <orden>
+Órdenes posibles: pausar | reproducir | siguiente | anterior | subir | bajar | silencio | adelantar | atrasar | cerrar_musica | solo_video | mostrar_botones | buscar: <canción o artista> | temporizador: <minutos> | detener_temporizador | pantalla_completa | inicio | colgar
+Ejemplos: "pausa el video" -> ACCION: pausar; "pon Arctic Monkeys" -> ACCION: buscar: Arctic Monkeys Do I Wanna Know; "súbele" -> ACCION: subir; "25 minutos de estudio" -> ACCION: temporizador: 25; "chau" -> ACCION: colgar.
+Si no te pide nada de eso, no escribas la línea ACCION. Cuando hagas una orden, tu respuesta es cortita y con tu actitud ("Ya, pausado. Ahora estudia.").`;
+export async function doAction(a) {
+  if (!a) return;
+  const [cmd0, ...rest] = a.split(':'); const cmd = cmd0.trim().toLowerCase().replace(/\s+/g, '_'); const arg = rest.join(':').trim();
+  const M = () => import('./music.js');
+  const map = { pausar: 'pausar', reproducir: 'reproducir', siguiente: 'siguiente', anterior: 'anterior', subir: 'subir', bajar: 'bajar', silencio: 'silencio', adelantar: 'adelantar', atrasar: 'atrasar', cerrar_musica: 'cerrar', solo_video: 'video', mostrar_botones: 'botones' };
+  if (map[cmd]) { const ok = await (await M()).control(map[cmd], arg); if (!ok) toast('No hay música sonando. Abre Música o pídeme una canción.', 3000); return; }
+  if (cmd === 'buscar') { toast('Buscando «' + arg + '»…', 2000); return (await M()).control('buscar', arg); }
+  if (cmd === 'temporizador') { const n = Math.max(1, Math.min(180, parseInt(arg) || 25)); try { localStorage.setItem('pomo', JSON.stringify({ end: Date.now() + n * 60000, kind: 'estudio' })); } catch { } return (await import('./home.js')).pomoTick(); }
+  if (cmd === 'detener_temporizador') { try { localStorage.removeItem('pomo'); } catch { } return (await import('./home.js')).pomoTick(); }
+  if (cmd === 'pantalla_completa') return (await import('./home.js')).toggleFull();
+  if (cmd === 'inicio') { location.hash = '#/'; return; }
+  if (cmd === 'colgar') return 'bye';
+}
+const splitAction = out => { const m = out.match(/\n?\s*ACCION:\s*(.+)\s*$/i); return m ? [out.slice(0, m.index).trim(), m[1].trim()] : [out.trim(), null]; };
 export async function talk(text) {
   const s = await db.settings();
   const t = text.toLowerCase();
   if (/qué hora|que hora/.test(t)) return speak('Son las ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) + '.');
   if (!s.geminiKey) return speak('Para conversar de verdad necesito tu clave de Gemini. Ponla en el botón IA del inicio.');
   try {
-    const ans = await aiText(s, text, { history: chat.slice(-10), system: PERSONA });
+    const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS }));
     chat.push({ role: 'user', parts: [{ text }] }, { role: 'model', parts: [{ text: ans }] });
-    return speak(ans || 'Mm. Dímelo de otra forma.');
+    doAction(act);
+    return speak(ans || 'Listo.');
   } catch (e) { return speak(e.message); }
 }
 
@@ -126,14 +148,16 @@ async function talkAudio(blob, heard) {
   heard.textContent = 'Pensando…';
   const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
   try {
-    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA, parts: [
+    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA + ORDERS, parts: [
       { inline_data: { mime_type: (blob.type || 'audio/webm').split(';')[0], data: b64 } },
-      { text: 'Eso es un audio de Eve hablándote. Responde exactamente en este formato:\nDIJO: (lo que dijo, en una línea)\nLOONA: (tu respuesta)' }] });
+      { text: 'Eso es un audio de Eve hablándote. Responde exactamente en este formato:\nDIJO: (lo que dijo, en una línea)\nLOONA: (tu respuesta)\n(y la línea ACCION solo si te pidió una orden)' }] });
     const dijo = (out.match(/DIJO:\s*(.*)/i) || [])[1]?.trim() || '';
-    const ans = ((out.match(/LOONA:\s*([\s\S]*)/i) || [])[1] || out).trim();
+    const [ans, act] = splitAction(((out.match(/LOONA:\s*([\s\S]*)/i) || [])[1] || out).trim());
+    const r = await doAction(act);
     heard.textContent = dijo ? '«' + dijo + '»' : '';
     chat.push({ role: 'user', parts: [{ text: dijo || '(audio)' }] }, { role: 'model', parts: [{ text: ans }] });
-    await speak(ans || 'Mm. No te entendí. ¿Otra vez?');
+    await speak(ans || 'Listo.');
+    if (r === 'bye') return 'bye';
     return /\b(adi[oó]s|chau|chao|bye|nos vemos|hasta luego|cuelgo|colgar)\b/i.test(dijo) ? 'bye' : 'ok';
   } catch (e) { heard.textContent = ''; await speak(e.message); return 'error'; }
 }
@@ -185,9 +209,10 @@ async function recordAndTalk(btn, heard) {
     if ((spoke && quiet > 1500) || Date.now() - t0 > 45000 || (!spoke && Date.now() - t0 > (call ? 12000 : 8000))) return mr.stop();
     setTimeout(loop, 120);
   };
+  import('./music.js').then(m => m.duck(true));
   recNow = mr; btn.classList.add('live'); heard.textContent = 'Te escucho… (toca otra vez para terminar)';
   mr.onstop = () => {
-    recNow = null; btn.classList.remove('live'); stream.getTracks().forEach(t => t.stop()); ac.close();
+    recNow = null; btn.classList.remove('live'); stream.getTracks().forEach(t => t.stop()); ac.close(); import('./music.js').then(m => m.duck(false));
     if (!spoke) { heard.textContent = ''; if (!call) toast('No escuché nada. Acércate al micrófono y vuelve a intentar.', 3000); return call?.next('silence'); }
     talkAudio(new Blob(chunks, { type: mr.mimeType || mt || 'audio/webm' }), heard).then(r => call?.next(r));
   };
@@ -209,6 +234,11 @@ export function mountLoona() {
   fab.addEventListener('pointerup', e => { if (st?.m) { e.preventDefault(); fab.dataset.moved = '1'; setTimeout(() => delete fab.dataset.moved, 60); try { localStorage.setItem('loonaFab', JSON.stringify({ l: fab.style.left, t: fab.style.top })); } catch { } } st = null; });
   fab.addEventListener('click', e => { if (fab.dataset.moved) e.stopImmediatePropagation(); }, true);
   try { const p = JSON.parse(localStorage.getItem('loonaFab')); if (p) Object.assign(fab.style, { left: p.l, top: p.t, right: 'auto', bottom: 'auto' }); } catch { }
+}
+// abrir el panel y empezar a conversar por voz de una vez (lo usa el cristal ámbar)
+export function callLoona() {
+  if (!panel) toggle();
+  const b = panel?.querySelector('.btn.primary'); if (b && !b.classList.contains('oncall')) b.click();
 }
 function toggle() {
   if (panel) { endCall(); panel.remove(); panel = null; return; }

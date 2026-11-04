@@ -45,3 +45,5 @@ db.onChange((rec, origin) => {
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(() => { });
 if (navigator.storage?.persist) navigator.storage.persist();
+
+import('./home.js').then(m => m.pomoTick?.());

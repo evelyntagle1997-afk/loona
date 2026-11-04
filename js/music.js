@@ -24,6 +24,63 @@ function parse(url) {
 const save = o => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch { } };
 const last = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
 
+// ---------- control por voz (lo usa Loona) ----------
+// cmd: pausar | reproducir | siguiente | anterior | subir | bajar | silencio | adelantar | atrasar | cerrar | buscar
+export async function control(cmd, arg) {
+  if (cmd === 'buscar') return playSearch(arg);
+  if (!box || !player?.getPlayerState) {
+    if (cmd === 'reproducir') { openMusic(); return true; }
+    return false;
+  }
+  const v = () => player.getVolume?.() ?? 50;
+  switch (cmd) {
+    case 'pausar': player.pauseVideo(); break;
+    case 'reproducir': player.playVideo(); break;
+    case 'siguiente': player.nextVideo(); break;
+    case 'anterior': player.previousVideo(); break;
+    case 'subir': player.unMute(); player.setVolume(Math.min(100, v() + (+arg || 20))); break;
+    case 'bajar': player.setVolume(Math.max(0, v() - (+arg || 20))); break;
+    case 'silencio': player.mute(); break;
+    case 'adelantar': player.seekTo(player.getCurrentTime() + (+arg || 15), true); break;
+    case 'atrasar': player.seekTo(Math.max(0, player.getCurrentTime() - (+arg || 15)), true); break;
+    case 'cerrar': box.querySelector('[aria-label="Cerrar la música"]')?.click(); break;
+    case 'video': box.classList.remove('novideo', 'mini'); box.classList.add('vonly'); break;
+    case 'botones': box.classList.remove('vonly', 'mini'); break;
+    default: return false;
+  }
+  return true;
+}
+// bajar la música mientras Loona te escucha (para que el micrófono te oiga a ti)
+let ducked = null;
+export function duck(on) {
+  if (!player?.getVolume) return;
+  if (on && ducked == null && player.getPlayerState?.() === 1) { ducked = player.getVolume(); player.setVolume(Math.min(ducked, 12)); }
+  else if (!on && ducked != null) { player.setVolume(ducked); ducked = null; }
+}
+// poner un video por id o enlace
+export function playUrl(url) { const p = parse(url); if (!p) return false; save(p); openMusic(); startRef?.(p); return true; }
+let startRef = null;
+// buscar una canción: Gemini (con búsqueda de Google) encuentra el enlace de YouTube
+async function playSearch(q) {
+  if (!q) return false;
+  const db = await import('./db.js'); const s = await db.settings();
+  if (!s.geminiKey) { window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank'); return true; }
+  for (const m of [s.geminiModel || 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash']) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(s.geminiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tools: [{ google_search: {} }], contents: [{ role: 'user', parts: [{ text: `Busca en YouTube: "${q}". Responde SOLO con el enlace https://www.youtube.com/watch?v=... del video oficial o más popular (si piden un mix o playlist, puede ser un enlace de lista). Nada más.` }] }] }) });
+      if (r.status === 404) continue;
+      if (!r.ok) break;
+      const j = await r.json(); const txt = j.candidates?.[0]?.content?.parts?.map(x => x.text || '').join(' ') || '';
+      const url = (txt.match(/https?:\/\/(?:www\.|music\.|m\.)?(?:youtube\.com\/(?:watch\?[^\s)"]+|playlist\?[^\s)"]+|shorts\/[\w-]+)|youtu\.be\/[\w-]+)/) || [])[0];
+      if (url && playUrl(url)) return true;
+      break;
+    } catch { break; }
+  }
+  window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank');
+  return true;
+}
+
 export function openMusic() {
   if (box) { box.hidden = false; box.classList.remove('mini'); return; }
   const titleEl = h('b', {}, 'Música');
@@ -76,11 +133,12 @@ export function openMusic() {
   async function start(p) {
     try { await loadApi(); } catch (e) { return toast(e.message); }
     const opts = { playerVars: { playsinline: 1, rel: 0, modestbranding: 1, ...(p.list ? { listType: 'playlist', list: p.list } : {}) },
-      events: { onStateChange: ev => { playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
+      events: { onError: () => toast('Ese video no se puede reproducir aquí. Prueba otro enlace.', 3500), onStateChange: ev => { playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
     if (player?.loadVideoById) { if (p.list) player.loadPlaylist({ list: p.list, listType: 'playlist', index: 0 }); else player.loadVideoById(p.v); return; }
     player = new YT.Player('yt-frame', { ...opts, videoId: p.v || undefined, height: '100%', width: '100%' });
     player.addEventListener?.('onReady', () => player.playVideo());
   }
+  startRef = start;
   const l = last(); if (l) start(l); else inp.focus();
-  function close() { player?.destroy?.(); player = null; box.remove(); box = null; }
+  function close() { player?.destroy?.(); player = null; box.remove(); box = null; startRef = null; }
 }

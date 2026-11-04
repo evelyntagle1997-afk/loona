@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 45;
+export const APP_VERSION = 46;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -47,17 +47,23 @@ export async function renderHome(app, go) {
   const hour = new Date().getHours(), hi = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
   const scene = h('div', { class: 'agenda' },
     h('img', { class: 'ag-bg', src: 'img/agenda.webp', srcset: 'img/agenda-s.webp 1024w, img/agenda.webp 1536w', sizes: '(max-width: 700px) 1000px, 100vw', alt: '', draggable: false, fetchpriority: 'high' }),
-    P('ag-note', 20.4, 13.6, 15.4, 26.4,
+    h('button', { class: 'ag-z ag-note ag-hot', style: { left: '20.4%', top: '13.6%', width: '15.4%', height: '26.4%' }, 'aria-label': 'Nota del clip: escribe un recordatorio', title: 'Tu nota: toca para escribir un recordatorio', onclick: editNote },
       h('span', { class: 'ag-hi' }, hi + ', Eve'),
       h('span', { class: 'ag-date' }, new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })),
-      h('span', { class: 'ag-xo' }, subjects.length ? '¿qué estudiamos hoy?' : 'crea tu primera materia'),
+      h('span', { class: 'ag-xo' }, noteText() || (subjects.length ? '¿qué estudiamos hoy?' : 'crea tu primera materia')),
       h('span', { class: 'ag-sign' }, 'XOXO, Loona')),
     card('c1' + (lastOk ? '' : ' dim'), 8.5, 24.3, 10.8, lastOk ? 'Seguir estudiando' : 'Sin pendientes', lastOk ? lastS.title + (lastS.page ? ' · pág. ' + lastS.page : '') : '', () => lastOk && go(lastS.hash)),
     card('c2', 8.5, 31, 10.8, 'Nueva materia', '', () => newSubject(go)),
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    h('button', { class: 'ag-z ag-charm', style: { left: '36.6%', top: '53%', width: '4.4%', height: '17%' }, 'aria-label': 'Hablar con Loona', title: 'Hablar con Loona', onclick: () => document.getElementById('loona-fab')?.click() }),
+    hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
+    hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
+    hot('ag-key', 39.6, 61.5, 4.2, 12, 'Llave: tu cuenta en la nube', () => settings('nube')),
+    hot('ag-clip', 24.8, 0.5, 6.8, 16, 'Clip: copia de seguridad', () => settings('copia')),
+    hot('ag-rings', 46.6, 9, 5.4, 82, 'Argollas: ajustes de la IA', () => settings('ia')),
+    hot('ag-tab', 88, 27, 2.6, 12.5, 'Pestaña: letras y fuentes', () => settings('fuentes')),
+    hot('ag-strap', 91, 40.5, 7.2, 16, 'Broche: pantalla completa', () => toggleFull()),
     P('ag-page', 52, 12, 35, 75, idx),
     h('span', { class: 'ag-word', 'aria-hidden': 'true' }, 'Loona'),
     h('span', { class: 'ag-ver' }, 'v' + APP_VERSION));
@@ -136,6 +142,49 @@ function initPocket(pocket) {
   pocket.addEventListener('pointerup', up); pocket.addEventListener('pointercancel', up);
   pocket.addEventListener('wheel', e => { if (!adj) return; e.preventDefault(); zoom(Math.exp(-e.deltaY * .002)); }, { passive: false });
   draw();
+}
+
+// zona tocable sobre un objeto de la foto (se ilumina al pasar el mouse y muestra qué hace)
+function hot(cls, l, t, w, hh, label, fn) {
+  return h('button', { class: 'ag-z ag-hot ' + cls, style: { left: l + '%', top: t + '%', width: w + '%', height: hh + '%' }, 'aria-label': label, title: label, 'data-tip': label.split(':')[1]?.trim() || label, onclick: e => { e.stopPropagation(); fn(e); } });
+}
+const noteText = () => { try { return localStorage.getItem('homeNote') || ''; } catch { return ''; } };
+async function editNote(e) {
+  const v = await ask('Tu nota', 'Recordatorio (ej.: repasar genética antes del jueves)', noteText(), 'Guardar');
+  if (v == null) return;
+  try { localStorage.setItem('homeNote', v.trim().slice(0, 80)); } catch { }
+  const el = e.currentTarget?.querySelector?.('.ag-xo') || document.querySelector('.ag-xo'); if (el) el.textContent = v.trim() || '¿qué estudiamos hoy?';
+}
+
+// ---------- temporizador de estudio (Pomodoro) ----------
+// Sigue contando aunque cambies de pantalla; Loona te avisa con su voz al terminar.
+let pomoT = 0;
+export function pomodoro() {
+  const st = (() => { try { return JSON.parse(localStorage.getItem('pomo')); } catch { return null; } })();
+  const run = (min, kind) => { try { localStorage.setItem('pomo', JSON.stringify({ end: Date.now() + min * 60000, kind })); } catch { } m.close(); pomoTick(); toast(kind === 'pausa' ? `Descanso de ${min} min` : `A estudiar ${min} min. Te aviso al terminar.`, 2500); };
+  const m = modal({ title: 'Temporizador', body: h('div', { class: 'pomo-box' },
+    h('p', {}, st && st.end > Date.now() ? `Faltan ${fmt(st.end - Date.now())} (${st.kind}).` : 'Estudia concentrada y descansa un poco. Loona te avisa.'),
+    h('div', { class: 'ie-row' },
+      h('button', { class: 'btn primary', onclick: () => run(25, 'estudio') }, 'Estudiar 25 min'),
+      h('button', { class: 'btn primary', onclick: () => run(50, 'estudio') }, 'Estudiar 50 min'),
+      h('button', { class: 'btn', onclick: () => run(5, 'pausa') }, 'Descanso 5 min')),
+    st && st.end > Date.now() ? h('button', { class: 'btn', onclick: () => { localStorage.removeItem('pomo'); pomoTick(); m.close(); } }, 'Detener') : null) });
+}
+const fmt = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+export function pomoTick() {
+  clearTimeout(pomoT);
+  let st = null; try { st = JSON.parse(localStorage.getItem('pomo')); } catch { }
+  let chip = document.getElementById('pomo-chip');
+  if (!st) { chip?.remove(); return; }
+  const left = st.end - Date.now();
+  if (left <= 0) {
+    try { localStorage.removeItem('pomo'); } catch { } chip?.remove();
+    import('./loona.js').then(L => L.speak(st.kind === 'pausa' ? 'Se acabó el descanso, Eve. Vuelve, que el ENEM no espera.' : 'Tiempo, Eve. Bien hecho. Levántate, toma agua y descansa cinco minutos.'));
+    return;
+  }
+  if (!chip) { chip = h('button', { id: 'pomo-chip', class: 'pomo-chip', 'aria-label': 'Temporizador', onclick: pomodoro }); document.body.append(chip); }
+  chip.textContent = (st.kind === 'pausa' ? 'Descanso ' : 'Estudio ') + fmt(left);
+  pomoT = setTimeout(pomoTick, 1000);
 }
 
 export function toggleFull() {
