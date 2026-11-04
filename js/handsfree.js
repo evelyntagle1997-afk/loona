@@ -26,7 +26,8 @@ export async function start(user) {
   on = true; try { localStorage.setItem(KEY, '1'); } catch { }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let srOff = false; try { srOff = localStorage.getItem('hfEngine') === 'gemini'; } catch { }
-  if (SR && !srOff) startSR(SR); else await startVAD();
+  const beeps = /Android/i.test(navigator.userAgent);   // en Android el dictado suena como radio cada vez: uso el motor silencioso
+  if (SR && !srOff && !beeps) startSR(SR); else await startVAD();
   if (user && on) speak('Ugh. Bien. Te escucho todo el rato. Di «Luny» y lo que quieras.');
 }
 export function stop(user) {
@@ -111,7 +112,7 @@ async function startVAD() {
       if (rms > thr) { chunks = []; mr = new MediaRecorder(stream, mt ? { mimeType: mt, audioBitsPerSecond: 24000 } : {}); mr.ondataavailable = e => e.data.size && chunks.push(e.data); mr.start(200); t0 = Date.now(); quiet = 0; }
     } else {
       if (rms > thr * .7) quiet = 0; else quiet += 100;
-      if (quiet > 1200 || Date.now() - t0 > 12000) finish();
+      if (quiet > 900 || Date.now() - t0 > 12000) finish();
     }
   };
   engine = { stop: () => { alive = false; clearTimeout(timer); try { mr?.stop(); } catch { } stream.getTracks().forEach(t => t.stop()); ac.close(); } };

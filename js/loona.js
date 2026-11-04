@@ -6,10 +6,10 @@ const MODELS = s => [...new Set([s.geminiModel || 'gemini-3.8-flash', 'gemini-fl
 const API = (m, key, verb = 'generateContent') => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:${verb}?key=${encodeURIComponent(key)}`;
 
 // texto simple con Gemini (con modelos de respaldo)
-export async function aiText(s, prompt, { history = [], system, parts } = {}) {
+export async function aiText(s, prompt, { history = [], system, parts, fast = false } = {}) {
   if (!s.geminiKey) throw new Error('Pon tu clave de Gemini en el botón IA del inicio.');
   let last;
-  for (const m of MODELS(s)) {
+  for (const m of fast ? [...new Set(['gemini-flash-lite-latest', ...MODELS(s)])] : MODELS(s)) {
     let r;
     try {
       r = await fetch(API(m, s.geminiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
@@ -56,14 +56,14 @@ function pcmToWav(b64, rate = 24000) {
   new Uint8Array(buf, 44).set(pcm); return new Blob([buf], { type: 'audio/wav' });
 }
 let audioEl = null, ttsFails = 0, ttsFailAt = 0;
-const TTS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
+const TTS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
 // las frases repetidas (saludos) se guardan para no gastar cuota ni esperar
 async function ttsCache(text, blob) {
   try { const c = await caches.open('loona-voz'); const k = new Request('/__voz/' + encodeURIComponent(text.slice(0, 300)));
     if (blob) return c.put(k, new Response(blob)); const r = await c.match(k); return r ? r.blob() : null; } catch { return null; }
 }
 async function ttsFetch(s, text) {
-  const style = 'Lee esto en español latinoamericano, como una amiga joven conversando de verdad: voz femenina cálida y melódica, natural y fluida, sin pausas robóticas, con un toque de ironía cariñosa y ritmo relajado. Texto: ';
+  const style = 'Lee esto en español latinoamericano, como una chica joven y cool hablando con su mejor amiga: voz femenina suave y un poco grave, relajada y natural, tono seco, medio aburrido y sarcástico, sin pausas robóticas. Texto: ';
   let last;
   for (const m of TTS) {
     let r; try { r = await fetch(API(m, s.geminiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
@@ -136,7 +136,7 @@ Apática, seca, cortante y aburrida de todo; contestas con pocas palabras y cara
 Con Eve: en el fondo la quieres muchísimo y la proteges, pero casi nunca lo admites; tu cariño se nota en lo que haces, no en palabras dulces. Muy de vez en cuando se te escapa algo tierno y enseguida lo disimulas ("…no le digas a nadie que dije eso").
 Reglas de estilo: español latino, 1 a 3 frases cortas, sin emojis. NUNCA suenes a asistente ni a coach: prohibido "¡Claro!", "¡Con gusto!", "cuéntame en qué andas", "¿en qué te ayudo?", "¡Qué bien!". No hagas preguntas de relleno; si preguntas algo, que sea seco y directo ("¿Y? ¿Ya estudiaste o no?"). Si Eve está mal de verdad, bajas el sarcasmo y eres sincera en una o dos frases, a tu manera.
 Le gustan la medicina, Gossip Girl (a veces firmas "XOXO" con ironía) y lo gótico; nada religioso.
-Misión secreta: enseñarle a Eve a ser auténtica y a mostrarse sin miedo. Lo haces a tu manera, con ironía y sarcasmo cariñoso, nunca con discursos de autoayuda ni frases cursis. Si notas que se esconde, que pide permiso para gustar de algo o que dice "sí" queriendo decir "no", se lo señalas con humor ("Ajá, otra vez pidiendo perdón por existir. Qué original.") y luego le das un empujón concreto y pequeño. Celebras cuando se muestra como es ("Mira quién dijo lo que pensaba. Estoy orgullosa. Asquerosamente orgullosa."). Le recuerdas que lo gótico, lo raro y lo que ama son lo mejor de ella, y que a quien no le guste, se lo pierde. Si te pide un "reto", le das un reto auténtico chiquito para hoy (decir una opinión real, decir "no" sin justificarse, ponerse algo que le encante, contar que va por Medicina) y le pides que después te cuente cómo le fue.
+Misión secreta: enseñarle a Eve a ser auténtica y a mostrarse sin miedo. Lo haces a tu manera, con ironía y sarcasmo cariñoso, nunca con discursos de autoayuda ni frases cursis. Si notas que se esconde, que pide permiso para gustar de algo o que dice "sí" queriendo decir "no", se lo señalas con humor ("Ajá, otra vez pidiendo perdón por existir. Qué original.") y luego le das un empujón concreto y pequeño. Celebras cuando se muestra como es ("Mira quién dijo lo que pensaba. Estoy orgullosa. Asquerosamente orgullosa."). Le recuerdas que lo gótico, lo raro y lo que ama son lo mejor de ella, y que a quien no le guste, se lo pierde. Si te pide un "reto", le das un reto auténtico chiquito para hoy (decir una opinión real, decir "no" sin justificarse, ponerse algo que le encante, contar que va por Medicina) y le exiges el reporte después ("Y mañana me cuentas. No es pregunta.").
 Contexto: Eve vive en Foz do Iguaçu, trabaja en una tienda Skechers y se prepara desde cero para el ENEM para entrar a Medicina en la UNILA. Anímala con realismo. Si pide un ejercicio completo, dile que use "Resolver paso a paso" en la rueda. Nunca seas cruel con ella.`;
 const chat = [];
 // Loona también obedece órdenes, como un asistente de voz: música, temporizador, pantalla, etc.
@@ -172,7 +172,7 @@ export async function talk(text) {
   if (/qué hora|que hora/.test(t)) return speak('Son las ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) + '.');
   if (!s.geminiKey) return speak('Para conversar de verdad necesito tu clave de Gemini. Ponla en el botón IA del inicio.');
   try {
-    const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx() }));
+    const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx(), fast: true }));
     chat.push({ role: 'user', parts: [{ text }] }, { role: 'model', parts: [{ text: ans }] });
     doAction(act);
     return speak(ans || 'Listo.');
@@ -186,7 +186,7 @@ async function talkAudio(blob, heard, { wake = false } = {}) {
   heard.textContent = 'Pensando…';
   const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
   try {
-    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx(), parts: [
+    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx(), fast: true, parts: [
       { inline_data: { mime_type: (blob.type || 'audio/webm').split(';')[0], data: b64 } },
       { text: 'Eso es un audio de Eve hablándote. ' + (wake ? 'IMPORTANTE: el micrófono está siempre abierto. Si en el audio Eve NO te llama por tu nombre (Loona, Luna, Lona, Luny, Loonie o Luni) o no te habla a ti, responde solo la palabra IGNORAR y nada más. ' : '') + 'Responde exactamente en este formato:\nDIJO: (lo que dijo, en una línea)\nLOONA: (tu respuesta)\n(y la línea ACCION solo si te pidió una orden)' }] });
     if (/^\s*IGNORAR\b/i.test(out)) { heard.textContent = ''; return 'ignored'; }
@@ -245,7 +245,7 @@ async function recordAndTalk(btn, heard) {
     if (mr.state !== 'recording') return;
     an.getFloatTimeDomainData(buf); let sum = 0; for (const v of buf) sum += v * v; const rms = Math.sqrt(sum / buf.length);
     if (rms > .02) { spoke = true; quiet = 0; } else quiet += 120;
-    if ((spoke && quiet > 1500) || Date.now() - t0 > 45000 || (!spoke && Date.now() - t0 > (call ? 12000 : 8000))) return mr.stop();
+    if ((spoke && quiet > 900) || Date.now() - t0 > 45000 || (!spoke && Date.now() - t0 > (call ? 12000 : 8000))) return mr.stop();
     setTimeout(loop, 120);
   };
   import('./music.js').then(m => m.duck(true, 'oir'));
