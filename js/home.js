@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 84;
+export const APP_VERSION = 85;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -311,6 +311,23 @@ export function pomoTick() {
   pomoT = setTimeout(pomoTick, 1000);
 }
 
+// primera hoja con la librería StPageFlip (curvatura y sombra reales; la hoja queda a la izquierda)
+let book = null;
+async function realPage(sc) {
+  try {
+    const { PageFlip } = await import('../vendor/page-flip/page-flip.module.js');
+    book?.destroy?.(); sc.querySelector('.ag-book')?.remove();
+    const r = sc.getBoundingClientRect(), W = Math.round(r.width * .388), H = Math.round(r.height * .806);
+    const wrap = h('div', { class: 'ag-book' });
+    const mk = cls => h('div', { class: 'pf-page ' + cls }, cls === 'pf-front' ? h('span', { class: 'agf-hint' }, 'Toca o arrastra la esquina para pasar la hoja') : null);
+    const pages = [mk('pf-front'), mk('pf-back'), mk('pf-empty')];
+    const holder = h('div', {}, ...pages); wrap.append(holder); sc.append(wrap);
+    book = new PageFlip(holder, { width: W, height: H, size: 'fixed', showCover: true, usePortrait: false, drawShadow: true, maxShadowOpacity: .45, flippingTime: 1000, mobileScrollSupport: false, showPageCorners: true, disableFlipByClick: false, startZIndex: 0, autoSize: false });
+    book.loadFromHTML(pages);
+    book.on('flip', ev => { if (ev.data >= 1) { sc.classList.add('shown', 'booked'); } else sc.classList.remove('booked'); });
+    return true;
+  } catch (e) { console.warn('pageflip', e); return false; }
+}
 // pasa una hoja nueva: gira y se QUEDA a la izquierda mostrando su espalda (se apilan hasta 3)
 function flipPage(sc) {
   const pg = h('div', { class: 'ag-flip turn', 'aria-hidden': 'true' }, h('div', { class: 'agf-front' }), h('div', { class: 'agf-back' }));
@@ -339,20 +356,19 @@ export function openAgenda() {
       c.classList.remove('opening'); c.classList.add('open');
       // 3) la primera hoja espera: se pasa cuando tú la tocas
       const f = sc?.querySelector('.ag-flip'); if (!f) { sc?.classList.add('shown'); return r(); }
-      f.classList.add('wait');
-      const turn = e => {
-        e?.stopPropagation(); f.removeEventListener('click', turn); f.classList.remove('wait');
-        f.style.visibility = 'hidden'; flipPage(sc);
-        setTimeout(() => sc.classList.add('shown'), 420);   // 4) entra el contenido
-      };
-      f.addEventListener('click', turn);
-      r();
+      // hoja de papel vegetal con giro realista (StPageFlip): se arrastra desde la esquina o se toca
+      realPage(sc).then(ok => {
+        if (ok) return r();
+        f.classList.add('wait');   // respaldo si la librería no carga
+        const turn = e => { e?.stopPropagation(); f.removeEventListener('click', turn); f.classList.remove('wait'); f.style.visibility = 'hidden'; flipPage(sc); setTimeout(() => sc.classList.add('shown'), 420); };
+        f.addEventListener('click', turn); r();
+      });
     }, 1100);
   }, 380));
 }
 export function closeAgenda() {
   const c = coverEl(); if (!c || reduce()) return Promise.resolve();
-  c.closest('.agenda')?.classList.remove('shown', 'left'); c.closest('.agenda')?.querySelectorAll('.ag-flip.done').forEach(x => x.remove()); { const f = c.closest('.agenda')?.querySelector('.ag-flip.wait, .ag-flip[style]'); if (f) f.style.visibility = ''; } c.closest('.agenda')?.querySelector('.ag-flip')?.classList.remove('wait');
+  c.closest('.agenda')?.classList.remove('shown', 'left'); c.closest('.agenda')?.querySelectorAll('.ag-flip.done').forEach(x => x.remove()); try { book?.destroy?.(); } catch { } book = null; c.closest('.agenda')?.querySelector('.ag-book')?.remove(); c.closest('.agenda')?.classList.remove('booked'); { const f = c.closest('.agenda')?.querySelector('.ag-flip.wait, .ag-flip[style]'); if (f) f.style.visibility = ''; } c.closest('.agenda')?.querySelector('.ag-flip')?.classList.remove('wait');
   c.classList.remove('open', 'opening'); c.classList.add('closing');
   setTimeout(() => c.closest('.agenda')?.classList.add('closed'), 380);
   return new Promise(r => setTimeout(() => { c.classList.remove('closing'); c.classList.add('shut'); r(); }, 750));

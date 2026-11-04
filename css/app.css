@@ -1599,3 +1599,15 @@ html.lite .ag-vp::before { animation: none; }
 .ag-flip.turn .agf-back { opacity: 1; }
 .ag-turned { display: none !important; }
 .ag-flip.turn .agf-back { transition: opacity .2s; }
+/* v85 hoja realista con StPageFlip (MIT): el libro ocupa las dos páginas; a la izquierda la espalda translúcida */
+.ag-book { position: absolute; left: 10.6%; top: 9.2%; width: 77.6%; height: 80.6%; z-index: 6; pointer-events: none; }
+.ag-book .stf__parent, .ag-book .stf__wrapper { width: 100% !important; height: 100% !important; }
+.ag-book .stf__block, .ag-book .stf__item { pointer-events: auto; }
+.pf-page { width: 100%; height: 100%; overflow: hidden; }
+.pf-front { background: url(../img/agenda.webp) 81.6% 46% / 257.7% auto; border-radius: 0 .6cqw .6cqw 0; position: relative; }
+.pf-front .agf-hint { opacity: 1 !important; bottom: 5%; }
+.pf-back { background: linear-gradient(270deg, rgba(0,0,0,.28), transparent 10%), url(../img/agenda.webp) 81.6% 46% / 257.7% auto; transform: scaleX(-1); opacity: .5; filter: brightness(.9); border-radius: .6cqw 0 0 .6cqw; }
+.pf-empty { background: transparent; }
+/* cuando la hoja ya pasó, el lado derecho del libro deja tocar el contenido de abajo */
+.agenda.booked .ag-book .stf__block { pointer-events: none; }
+.agenda.booked .ag-book, .agenda.booked .ag-book * { pointer-events: none !important; }
