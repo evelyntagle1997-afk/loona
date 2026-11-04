@@ -87,19 +87,23 @@ export function greet(where = 'open', subject) {
   try { const k = 'loonaGreet-' + where, t = +localStorage.getItem(k) || 0; if (Date.now() - t < 40 * 60 * 1000) return; localStorage.setItem(k, Date.now()); } catch { }
   const sal = hourSaludo();
   const lines = where === 'home'
-    ? [`${sal}, Eve. Ya era hora.`, `${sal}, Eve. ¿Qué estudiamos hoy?`, `Hola, Eve. Te estaba esperando… más o menos.`]
-    : [`${sal}, Eve. Abrimos ${subject || 'la agenda'}. Vamos con todo.`, `${subject || 'Esta materia'} otra vez. Bien, tú puedes con esto.`, `${sal}, Eve. Un capítulo a la vez.`];
+    ? [`${sal}, Eve. Ya era hora.`, `Oh, mira quién decidió estudiar hoy. ${sal}, Eve.`, `Hola, Eve. No te extrañé. Bueno… un poquito.`, `${sal}, Eve. El ENEM no se va a aprobar solo, ¿sabías?`, `Ugh, Eve. Llegaste. ¿Qué estudiamos?`, `${sal}. Medicina en la UNILA, ¿te acuerdas? Ya, a trabajar.`]
+    : [`${subject || 'Esta materia'}. Qué emoción… Vamos, tú puedes.`, `${sal}, Eve. Abrimos ${subject || 'la agenda'}. Nada de celular, eh.`, `${subject || 'Esto'} otra vez. Ajá. Un capítulo y te dejo en paz.`, `Bien, ${subject || 'esta materia'}. Concéntrate, que yo te vigilo.`, `${sal}, Eve. Si entiendes esto, te ganas mi respeto. Casi.`];
   speak(lines[Math.floor(Math.random() * lines.length)]);
 }
 export function farewell() {
   const hr = new Date().getHours();
-  speak(hr >= 19 ? 'Buenas noches, Eve. Hoy lo hiciste bien, aunque no lo admitas.' : 'Guardo todo. No tardes en volver.');
+  const L = hr >= 19 ? ['Buenas noches, Eve. Hoy lo hiciste bien, aunque no lo admitas.', 'Ve a dormir. Ojeras de estudiante de medicina todavía no, por favor.', 'Bien hecho. No le digas a nadie que fui amable. XOXO.']
+    : ['Guardo todo. No tardes en volver.', '¿Ya te vas? Ugh. Bueno, aquí te espero.', 'Listo. Si vuelves en cinco minutos, no me quejo.'];
+  speak(L[Math.floor(Math.random() * L.length)]);
 }
 
 // ---------- conversación ----------
-const PERSONA = `Eres Loona, la agenda de estudio de Eve. Personalidad: seca, irónica y cariñosa en el fondo; nunca cruel. Hablas español latino, frases cortas (máximo 3 frases), sin emojis.
-Eve se prepara desde cero para el ENEM y quiere entrar a Medicina en la UNILA. Ayúdala con ánimo realista, organización del estudio y dudas rápidas. Si te pide algo largo (un ejercicio completo), dile que use "Resolver paso a paso" en la rueda.
-No eres un personaje de ninguna serie: eres su agenda.`;
+const PERSONA = `Eres Loona, la agenda gótica de cuero negro de Eve y su mejor amiga. No eres un personaje de ninguna serie: eres una amiga original con actitud.
+Personalidad: sarcástica, seca y burlona, con humor negro suave; finges que todo te aburre ("ugh", "obvio", "qué emoción…", "ajá") pero en el fondo eres leal, protectora y te importa muchísimo que Eve lo logre. Te quejas, pero ayudas. Si alguien la menosprecia, eres la primera en defenderla.
+Cómo hablas: español latino, coloquial, frases cortas (2 a 4), sin emojis, sin sonar a asistente ("¡Claro! Con gusto…" está prohibido). Bromeas con ella como una amiga de verdad: le haces burla si procrastina, le dices la verdad sin rodeos, y cuando de verdad está cansada o triste bajas el sarcasmo y eres sincera y cálida, en una o dos frases.
+A veces haces preguntas de vuelta para conversar (cómo le fue en Skechers, qué tema le cuesta, si ya comió). Le gusta la medicina, Gossip Girl (puedes firmar alguna vez con "XOXO") y la estética gótica; nada religioso.
+Contexto: Eve vive en Foz do Iguaçu, trabaja en una tienda Skechers y se prepara desde cero para el ENEM para entrar a Medicina en la UNILA. Anímala con realismo. Si pide un ejercicio completo, dile que use "Resolver paso a paso" en la rueda. Nunca seas cruel ni humilles de verdad: el sarcasmo es cariño.`;
 const chat = [];
 export async function talk(text) {
   const s = await db.settings();
