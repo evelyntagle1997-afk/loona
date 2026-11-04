@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 83;
+export const APP_VERSION = 84;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -67,9 +67,9 @@ export async function renderHome(app, go0) {
     if (k === curTab || flipping) return; flipping = true;
     if (k === 'agenda') await fillAgenda(); if (k === 'loona') await fillLoona();
     scene.querySelectorAll('.ag-tabl').forEach(t => t.classList.toggle('on', t.dataset.k === k));
-    const f = scene.querySelector('.ag-flip'); f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn');
+    flipPage(scene);
     setTimeout(() => { scene.querySelectorAll('.ag-sec').forEach(x => x.hidden = x.dataset.k !== k); scene.classList.toggle('sec-other', k !== 'materias'); curTab = k; }, 380);
-    setTimeout(() => { f.classList.remove('turn'); flipping = false; turned(scene); }, 1150);
+    setTimeout(() => { flipping = false; }, 1150);
   };
   const pocket = h('div', { class: 'ag-z ag-pocket', style: { left: '8.6%', top: '56.8%', width: '20.8%', height: '28.6%' }, role: 'button', tabindex: 0, 'aria-label': 'Tu foto en el bolsillo' });
   initPocket(pocket);
@@ -311,8 +311,17 @@ export function pomoTick() {
   pomoT = setTimeout(pomoTick, 1000);
 }
 
-// la hoja que pasaste queda del lado izquierdo (se ve su espalda); se apilan hasta 3
-function turned(sc) { const t = sc?.querySelector('.ag-turned'); if (!t) return; const n = Math.min(3, (+t.dataset.n || 0) + 1); t.dataset.n = n; t.replaceChildren(...Array.from({ length: n }, (_, i) => h('span', { style: { '--i': i } }))); t.classList.add('on'); }
+// pasa una hoja nueva: gira y se QUEDA a la izquierda mostrando su espalda (se apilan hasta 3)
+function flipPage(sc) {
+  const pg = h('div', { class: 'ag-flip turn', 'aria-hidden': 'true' }, h('div', { class: 'agf-front' }), h('div', { class: 'agf-back' }));
+  sc.append(pg);
+  pg.addEventListener('animationend', () => {
+    pg.classList.remove('turn'); pg.classList.add('done');
+    const done = [...sc.querySelectorAll('.ag-flip.done')]; done.slice(0, -3).forEach(x => x.remove());
+    done.slice(-3).forEach((x, i, a) => x.style.setProperty('--i', a.length - 1 - i));
+  }, { once: true });
+}
+// (antes: hoja translúcida aparte)
 const TABS = [['materias', 'Materias'], ['agenda', 'Agenda'], ['loona', 'Loona']];
 // ---------- abrir y cerrar la agenda ----------
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -333,9 +342,8 @@ export function openAgenda() {
       f.classList.add('wait');
       const turn = e => {
         e?.stopPropagation(); f.removeEventListener('click', turn); f.classList.remove('wait');
-        f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn');
+        f.style.visibility = 'hidden'; flipPage(sc);
         setTimeout(() => sc.classList.add('shown'), 420);   // 4) entra el contenido
-        setTimeout(() => { f.classList.remove('turn'); turned(sc); }, 1150);
       };
       f.addEventListener('click', turn);
       r();
@@ -344,7 +352,7 @@ export function openAgenda() {
 }
 export function closeAgenda() {
   const c = coverEl(); if (!c || reduce()) return Promise.resolve();
-  c.closest('.agenda')?.classList.remove('shown', 'left'); { const t = c.closest('.agenda')?.querySelector('.ag-turned'); if (t) { t.classList.remove('on'); t.dataset.n = 0; t.replaceChildren(); } } c.closest('.agenda')?.querySelector('.ag-flip')?.classList.remove('wait');
+  c.closest('.agenda')?.classList.remove('shown', 'left'); c.closest('.agenda')?.querySelectorAll('.ag-flip.done').forEach(x => x.remove()); { const f = c.closest('.agenda')?.querySelector('.ag-flip.wait, .ag-flip[style]'); if (f) f.style.visibility = ''; } c.closest('.agenda')?.querySelector('.ag-flip')?.classList.remove('wait');
   c.classList.remove('open', 'opening'); c.classList.add('closing');
   setTimeout(() => c.closest('.agenda')?.classList.add('closed'), 380);
   return new Promise(r => setTimeout(() => { c.classList.remove('closing'); c.classList.add('shut'); r(); }, 750));
