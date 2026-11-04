@@ -103,29 +103,34 @@ async function exists(id) {
     const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id), { signal: c.signal }); clearTimeout(t);
     return r.ok; } catch { return null; }   // null = no se pudo comprobar
 }
-// buscar una canción: Gemini (con búsqueda de Google) encuentra el video y se reproduce aquí mismo
+// buscar una canción en YouTube sin gastar Gemini: lo hace el servidor de la app (/api/yt).
+// Si ese video no se deja poner aquí, prueba el siguiente resultado.
+let cands = [];
+export async function searchYT(q) {
+  try {
+    const c = new AbortController(); const t = setTimeout(() => c.abort(), 8000);
+    const r = await fetch('/api/yt?q=' + encodeURIComponent(q), { signal: c.signal, cache: 'no-store' }); clearTimeout(t);
+    if (r.ok && /json/.test(r.headers.get('content-type') || '')) { const j = await r.json(); return (j.items || []).map(x => x.id).filter(id => /^[\w-]{11}$/.test(id)); }
+  } catch (e) { console.warn('yt', e); }
+  return [];
+}
+async function geminiIds(q) {   // respaldo: le pregunto a Gemini (puede fallar si está en su límite)
+  try {
+    const db = await import('./db.js'); const s = await db.settings(); if (!s.geminiKey) return [];
+    const L = await import('./loona.js');
+    const txt = await L.aiText(s, `Dame hasta 4 enlaces de YouTube (https://www.youtube.com/watch?v=XXXXXXXXXXX) del video oficial de: "${q}". Solo los enlaces, uno por línea.`, { fast: true });
+    return [...new Set([...txt.matchAll(/(?:v=|youtu\.be\/)([\w-]{11})/g)].map(m => m[1]))];
+  } catch { return []; }
+}
 async function playSearch(q) {
   if (!q) return false;
-  const db = await import('./db.js'); const s = await db.settings();
-  if (!s.geminiKey) return playStream();
-  const ids = [];
-  for (const m of [s.geminiModel || 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash']) {
-    let r;
-    try {
-      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(s.geminiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tools: [{ google_search: {} }], contents: [{ role: 'user', parts: [{ text: `Busca en YouTube el video oficial (o el más visto) de: "${q}". Responde SOLO con hasta 3 enlaces completos https://www.youtube.com/watch?v=XXXXXXXXXXX, uno por línea, el mejor primero.` }] }] }) });
-    } catch { break; }
-    if (!r.ok) { if (r.status === 429) { toast('Gemini llegó a su límite por ahora.', 3000); return false; } continue; }
-    const j = await r.json();
-    const txt = (j.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join(' ') + ' ' + JSON.stringify(j.candidates?.[0]?.groundingMetadata?.groundingChunks || []);
-    for (const mm of txt.matchAll(/(?:v=|youtu\.be\/|\/shorts\/|\/embed\/)([\w-]{11})/g)) if (!ids.includes(mm[1])) ids.push(mm[1]);
-    if (ids.length) break;
+  let ids = await searchYT(q), checked = true;
+  if (!ids.length) { ids = await geminiIds(q); checked = false; }
+  for (let i = 0; i < Math.min(ids.length, 4); i++) {
+    const ok = checked ? true : await exists(ids[i]);
+    if (ok !== false) { cands = ids.slice(i + 1, i + 6); return playUrl('https://www.youtube.com/watch?v=' + ids[i]); }
   }
-  for (const id of ids.slice(0, 4)) {
-    const ok = await exists(id);
-    if (ok !== false) return playUrl('https://www.youtube.com/watch?v=' + id);
-  }
-  toast('No encontré «' + q + '» en YouTube; te pongo música para estudiar.', 3500);
+  toast('No encontré «' + q + '»; te pongo música para estudiar.', 3500);
   return playStream();
 }
 
@@ -147,7 +152,7 @@ export function openMusic(first) {
   const go = () => {
     const p = parse(inp.value);
     if (!p) return toast('Ese enlace no es de YouTube. Copia el enlace desde Compartir → Copiar enlace.', 4000);
-    save(p); start(p);
+    cands = []; save(p); start(p);
   };
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
   const src = h('div', { class: 'yt-src' }, inp, h('button', { class: 'chip', onclick: go }, 'Poner'),
@@ -195,7 +200,7 @@ export function openMusic(first) {
   async function start(p) {
     try { await loadApi(); } catch (e) { return toast(e.message); }
     const opts = { playerVars: { playsinline: 1, rel: 0, modestbranding: 1, ...(p.list ? { listType: 'playlist', list: p.list } : {}) },
-      events: { onError: () => toast('Ese video no se puede reproducir aquí. Prueba otro enlace.', 3500), onStateChange: ev => { if (ev.data === 1) autoHide?.(); playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
+      events: { onError: () => { if (cands.length) { const n = cands.shift(); save({ v: n }); player.loadVideoById(n); ensureSound(); return; } toast('Ese video no se puede reproducir aquí. Prueba otro enlace.', 3500); }, onStateChange: ev => { if (ev.data === 1) autoHide?.(); playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
     if (player?.loadVideoById) { if (p.list) player.loadPlaylist({ list: p.list, listType: 'playlist', index: 0 }); else player.loadVideoById(p.v); ensureSound(); return; }
     player = new YT.Player('yt-frame', { ...opts, videoId: p.v || undefined, height: '100%', width: '100%' });
     player.addEventListener?.('onReady', () => { ensureSound(); });

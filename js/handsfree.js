@@ -3,7 +3,8 @@
 // detecta cuando hablas y Gemini decide si le hablaste a Loona (usa tu cuota gratuita de Gemini).
 import * as db from './db.js';
 import { h, toast } from './ui.js';
-import { talk, talkAudio, speak, isBusy, bubble } from './loona.js';
+import { talk, talkAudio, speak, isBusy, bubble, geminiResting } from './loona.js';
+import { localCommand } from './cmds.js';
 
 const KEY = 'loonaHF';
 const WAKE = /\b(loona|luna|lona|lunna|louna|luny|luni|lunny|loonie|looney|loony|lunita|lúni|lunie|lunei)\b[,.!¿?\s]*/i;
@@ -51,6 +52,11 @@ async function heard(text) {
   const cmd = (m ? t.slice(m.index + m[0].length).trim() : t) || '(Eve te llamó por tu nombre. Contesta corto y seco.)';
   if (!cmd && Date.now() > follow) { follow = Date.now() + 8000; }
   follow = 0;
+  // órdenes simples (pon tal canción, pausa, siguiente, temporizador): sin llamada ni Gemini
+  if (localCommand(cmd)) { await talk(cmd); follow = Date.now() + 8000; return; }
+  // si Gemini descansa, no intento la llamada en vivo: respondo con lo que se puede
+  const st = await db.settings();
+  if (geminiResting(st)) { await talk(cmd); follow = Date.now() + 8000; return; }
   // con la llamada en vivo se conversa fluido; al colgar, Loona vuelve a esperar su nombre
   const L = await import('./live.js');
   const eng = engine; engine?.stop(); engine = null;
@@ -63,9 +69,11 @@ async function heard(text) {
 }
 
 // ---------- motor 1: dictado continuo del navegador ----------
-function startSR(SR) {
+function startSR(SR, forced = false) {
   let r = null, alive = true, gotAudio = false, restarts = 0;
-  const fallback = async why => { console.warn('manos libres: cambio a Gemini', why); alive = false; try { r?.abort(); } catch { } try { localStorage.setItem('hfEngine', 'gemini'); } catch { } if (on) await startVAD(); };
+  const fallback = async why => {
+    if (forced) { console.warn('dictado', why); if (why === 'no arrancó' || why === 'sin audio') return; alive = false; try { r?.abort(); } catch { } peek('El dictado del celular no funciona aquí; toca la luna y escríbeme.'); return; }
+    console.warn('manos libres: cambio a Gemini', why); alive = false; try { r?.abort(); } catch { } try { localStorage.setItem('hfEngine', 'gemini'); } catch { } if (on) await startVAD(); };
   const run = () => {
     if (!alive || !on) return;
     if (isBusy() || recording()) return setTimeout(run, 600);   // no escucha mientras Loona habla o grabas una clase
@@ -96,11 +104,12 @@ async function startVAD() {
     const rec = mr; mr = null; if (!rec) return;
     rec.onstop = async () => {
       const dur = Date.now() - t0;
-      if (dur < 700 || !alive || !on) return;
-      if (Date.now() - lastSend < 2500) return;   // no más de una consulta cada 2,5 s
+      if (dur < 900 || !alive || !on) return;
+      if (Date.now() - lastSend < 4000) return;   // no más de una consulta cada 4 s (cuida la cuota)
       lastSend = Date.now(); sending = true; peek('Escuchando lo que dijiste…');
       try {
         const r = await talkAudio(new Blob(chunks, { type: rec.mimeType || mt || 'audio/webm' }), dummy, { wake: Date.now() > follow });
+        if (r === 'resting') return toFree();
         if (r !== 'ignored') follow = Date.now() + 8000; else peek('(no me llamaste: di «Luny…»)');
         if (r === 'bye') follow = 0;
       } finally { sending = false; }
@@ -123,5 +132,14 @@ async function startVAD() {
     }
   };
   engine = { stop: () => { alive = false; clearTimeout(timer); try { mr?.stop(); } catch { } stream.getTracks().forEach(t => t.stop()); ac.close(); } };
+  // Gemini llegó a su límite: sigo escuchando con el dictado gratis del celular (puede sonar un pitido)
+  const toFree = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR || !on) { peek('Gemini descansa; toca la luna y escríbeme.'); return; }
+    engine?.stop(); engine = null;
+    bubble('Gemini descansa un rato. Sigo escuchándote gratis: di «Luny, pon…», «pausa», «siguiente».');
+    startSR(SR, true);
+  };
   mark('gemini'); loop();
+  if (geminiResting(s)) toFree();
 }

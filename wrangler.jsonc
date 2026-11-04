@@ -1,5 +1,6 @@
 {
   "name": "loona",
   "compatibility_date": "2025-09-01",
-  "assets": { "directory": "./" }
+  "main": "worker.js",
+  "assets": { "directory": "./", "binding": "ASSETS" }
 }

@@ -2,3 +2,8 @@ wrangler.jsonc
 .assetsignore
 .git
 CONTINUAR_CON_CLAUDE.md
+worker.js
+node_modules
+*.png.orig
+.wrangler
+.gitignore

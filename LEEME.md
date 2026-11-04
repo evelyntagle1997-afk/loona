@@ -152,3 +152,11 @@ Sin clave, la app igual resume sola (detecta definiciones, fechas, lugares, caus
 
 ## Dónde publicarla (sin créditos)
 Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create → Pages → Upload assets → arrastra la carpeta `cuaderno`. Para actualizar: Create new deployment. En el enlace nuevo, entra a **Nube** con la misma URL, clave, correo y contraseña → **Entrar**, y tus cuadernos bajan solos.
+
+## v100 — Loona no se queda muda ni sorda
+- Cada modelo de Gemini tiene su propia cuota gratis: si uno llega al límite, Loona usa el siguiente y deja descansar al agotado el tiempo que pide Google.
+- Música sin Gemini: «Luny, pon…», «pausa», «siguiente», «súbele», «temporizador de 25 minutos» funcionan aunque Gemini esté en su límite. La búsqueda en YouTube la hace el servidor de la app (`worker.js`, ruta `/api/yt`).
+- Si un video no se puede poner, salta solo al siguiente resultado.
+- Canta o tararea un pedazo y Loona pone la canción (con la letra también funciona: «pon la que dice…»).
+- Si se acaba la voz de Google, habla con la voz del celular (panel de Loona → «Si se acaba su voz de Google»).
+- En Android, si Gemini descansa, la escucha continua pasa al dictado gratis del celular (puede sonar un pitido).

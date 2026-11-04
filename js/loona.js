@@ -1,28 +1,42 @@
 // Loona: la agenda que te acompaña. Saluda, conversa por voz o texto y habla con voz de IA.
 import * as db from './db.js';
 import { h, icon, toast } from './ui.js';
+import { localCommand } from './cmds.js';
 
-const MODELS = s => [...new Set([s.geminiModel || 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash'])];
+import { cooled, coolDown, waitFrom, allCooled, QuotaError } from './quota.js';
+// cada modelo tiene su propia cuota gratis: si uno se agota, se usa el siguiente
+const FULL = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash'];
+const LITE = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'];
+export const MODELS = (s, fast) => [...new Set((fast ? [...LITE, s.geminiModel, ...FULL] : [s.geminiModel, ...FULL, ...LITE]).filter(Boolean))];
 const API = (m, key, verb = 'generateContent') => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:${verb}?key=${encodeURIComponent(key)}`;
+export const geminiResting = s => allCooled(MODELS(s, true));
 
-// texto simple con Gemini (con modelos de respaldo)
+// texto con Gemini: prueba los modelos en orden y salta los que llegaron a su límite
 export async function aiText(s, prompt, { history = [], system, parts, fast = false } = {}) {
   if (!s.geminiKey) throw new Error('Pon tu clave de Gemini en el botón IA del inicio.');
-  let last;
-  for (const m of fast ? [...new Set(['gemini-flash-lite-latest', ...MODELS(s)])] : MODELS(s)) {
+  const list = MODELS(s, fast);
+  let last = null, sawQuota = false;
+  for (const m of list) {
+    if (cooled(m)) { sawQuota = true; continue; }
     let r;
     try {
       r = await fetch(API(m, s.geminiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
         contents: [...history, { role: 'user', parts: parts || [{ text: prompt }] }], generationConfig: { temperature: .8 } }) });
     } catch { throw new Error('Sin conexión a internet.'); }
-    if (r.status === 404) { last = new Error('Modelo no disponible'); continue; }
-    if (r.status === 429) throw new Error('Gemini llegó a su límite gratuito por ahora.');
-    if (r.status === 400 || r.status === 401 || r.status === 403) { const t = await r.text(); if (/API key|API_KEY|PERMISSION|UNAUTH/i.test(t)) throw new Error('Tu clave de Gemini no funciona. Revísala en el botón IA del inicio.'); last = new Error('Gemini respondió con error ' + r.status); continue; }
+    if (r.status === 429) { sawQuota = true; coolDown(m, waitFrom(await r.text().catch(() => ''))); continue; }
+    if (r.status === 404) { coolDown(m, 3 * 864e5); last = new Error('Modelo no disponible'); continue; }   // no existe para tu cuenta: no lo vuelvo a probar en 3 días
+    if (r.status === 400 || r.status === 401 || r.status === 403) {
+      const t = await r.text();
+      if (/API key|API_KEY|PERMISSION_DENIED|UNAUTH/i.test(t) && !/model/i.test(t)) throw new Error('Tu clave de Gemini no funciona. Revísala en el botón IA del inicio.');
+      if (/not found|not supported|is not available|model/i.test(t)) coolDown(m, 864e5);
+      last = new Error('Gemini respondió con error ' + r.status); continue;
+    }
     if (!r.ok) { last = new Error('Gemini respondió con error ' + r.status); continue; }
     const j = await r.json();
     return j.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim() || '';
   }
+  if (sawQuota) throw new QuotaError(list);
   throw last || new Error('No se pudo usar Gemini');
 }
 
@@ -65,19 +79,22 @@ async function ttsCache(text, blob) {
 }
 async function ttsFetch(s, text) {
   // solo el texto: algunos modelos de voz leían en voz alta las instrucciones de estilo
-  let last;
+  let last, sawQuota = false;
   for (const m of TTS) {
+    if (cooled(m)) { sawQuota = true; continue; }
     let r; try { r = await fetch(API(m, s.geminiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       contents: [{ parts: [{ text }] }],
       generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } } } }) }); }
     catch { throw new Error('sin internet'); }
-    if (r.status === 429) throw new Error('tts cuota');
+    if (r.status === 429) { sawQuota = true; coolDown(m, waitFrom(await r.text().catch(() => ''))); continue; }   // este modelo de voz descansa; pruebo el siguiente
+    if (r.status === 404) coolDown(m, 3 * 864e5);
     if (!r.ok) { last = new Error('tts ' + m + ' ' + r.status); continue; }   // modelo no disponible para esta cuenta: pruebo el siguiente
     const j = await r.json(), part = j.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     if (!part) { last = new Error('sin audio'); continue; }
     const rate = +(/rate=(\d+)/.exec(part.inlineData.mimeType || '')?.[1] || 24000);
     return pcmToWav(part.inlineData.data, rate);
   }
+  if (sawQuota) throw new Error('tts cuota');
   throw last || new Error('sin modelo de voz');
 }
 // cómo pronunciar su nombre (solo cambia la voz; el texto escrito sigue diciendo Eve)
@@ -103,13 +120,21 @@ async function speak0(text) {
   bubble(text);
   if (voiceMode() === 'off') return;
   const s = await db.settings();
-  if (!s.geminiKey || !navigator.onLine) return;   // sin la voz de Loona, solo texto (nunca otra voz)
   const M = await import('./music.js').catch(() => null);
   M?.duck(true, 'voz');   // la música baja suave mientras Loona habla
-  try { await sayAI(s, text); }
-  catch (e) { console.warn(e); if (!speak0.warned) { speak0.warned = 1; toast(/cuota/.test(e.message) ? 'Se acabó la voz gratis de Loona por hoy (límite de Google). Te respondo por escrito; mañana vuelve.' : 'La voz de Loona no está disponible ahora; te respondo por escrito.', 5000); } }
-  finally { M?.duck(false, 'voz'); }
+  try {
+    if (!s.geminiKey || !navigator.onLine) throw new Error('sin clave');
+    await sayAI(s, text);
+  } catch (e) {
+    console.warn(e);
+    // si su voz de Google descansa, habla con la voz del celular para que nunca se quede muda
+    if (backupVoice()) {
+      if (!speak0.warned && /cuota/.test(e.message)) { speak0.warned = 1; toast('La voz de Google de Loona llegó a su límite; mientras tanto habla con la voz del celular.', 4500); }
+      await sayDevice(forVoice(text));
+    } else if (!speak0.warned) { speak0.warned = 1; toast('La voz de Loona no está disponible ahora; te respondo por escrito.', 4500); }
+  } finally { M?.duck(false, 'voz'); }
 }
+export const backupVoice = () => { try { return localStorage.getItem('loonaBackupVoice') !== '0'; } catch { return true; } };
 export function bubble(text) {
   let b = document.getElementById('loona-say');
   if (!b) { b = h('div', { id: 'loona-say', class: 'loona-say', role: 'status', 'aria-live': 'polite' }); document.body.append(b); }
@@ -154,11 +179,11 @@ export function rememberTurn(userText, loonaText) {
   if (!userText && !loonaText) return;
   chat.push({ role: 'user', parts: [{ text: userText || '…' }] }, { role: 'model', parts: [{ text: loonaText || '…' }] });
   saveChat();
-  if (++turnsSince >= 6) { turnsSince = 0; consolidate().catch(e => console.warn('memoria', e)); }
+  if (++turnsSince >= 10) { turnsSince = 0; consolidate().catch(e => console.warn('memoria', e)); }
 }
 // cada tanto, Loona "piensa" en lo que hablaron y actualiza sus recuerdos (como una amiga que se acuerda de ti)
 async function consolidate() {
-  const s = await db.settings(); if (!s.geminiKey) return;
+  const s = await db.settings(); if (!s.geminiKey || geminiResting(s)) return;
   const old = await memoria();
   const recent = chat.slice(-24).map(m => (m.role === 'user' ? 'Eve: ' : 'Loona: ') + m.parts[0].text).join('\n');
   const t = await aiText(s, `Tus recuerdos actuales:\n${old || '(todavía ninguno)'}\n\nConversación reciente:\n${recent}\n\nReescribe tus recuerdos en primera persona como Loona, en español, máximo 1200 caracteres, en viñetas cortas con estas partes:\n- Lo que sé de Eve (gustos, metas, cosas que le pasaron, cómo se siente últimamente, nombres que mencionó).\n- Nuestras cosas (chistes internos, apodos, promesas, retos pendientes, cuentos que ya le conté).\n- Cómo voy siendo yo con ella (mi personalidad que se va formando: qué me causa gracia, qué me molesta, qué me ablanda).\nConserva lo importante de antes, quita lo viejo o repetido. Nada de datos privados delicados (salud, dinero) salvo que ella los haya dicho y sean importantes para cuidarla.`, { system: 'Eres Loona, la amiga gótica de Eve, ordenando tus recuerdos. Responde solo con las viñetas.' });
@@ -182,6 +207,7 @@ NOTA: {"action":"create_note|highlight_pdf|add_margin_comment","visual_element":
 El texto de la nota va corto (máx. 140 caracteres). Tu respuesta hablada en esos casos es brevísima ("Anotado.", "Listo, en amarillo.").
 Órdenes posibles: pausar | reproducir | siguiente | anterior | subir | bajar | silencio | adelantar | atrasar | cerrar_musica | solo_video | mostrar_botones | buscar: <canción o artista> | temporizador: <minutos> | detener_temporizador | pantalla_completa | inicio | colgar
 Ejemplos: "pon música" (sin decir cuál) -> ACCION: reproducir; "pausa el video" -> ACCION: pausar; "pon Arctic Monkeys" -> ACCION: buscar: Arctic Monkeys Do I Wanna Know; "súbele" -> ACCION: subir; "25 minutos de estudio" -> ACCION: temporizador: 25; "chau" -> ACCION: colgar.
+CANCIONES POR LETRA: si Eve te dice o canta un pedazo de la letra de una canción o te pide "la canción que dice…", identifica la canción y usa ACCION: buscar: <artista> <título> (si no la reconoces, usa ACCION: buscar: <el pedazo de letra>).
 Si no te pide nada de eso, no escribas la línea ACCION. Si dices que pones música, SIEMPRE agrega la línea ACCION (si no, no suena nada). Cuando hagas una orden, tu respuesta es cortita y con tu actitud ("Ya, pausado. Ahora estudia.").`;
 export async function doAction(a) {
   if (!a) return;
@@ -252,8 +278,9 @@ export async function visual(n) {
 export async function talk(text) {
   await refreshAgendaCtx();
   const s = await db.settings();
-  const t = text.toLowerCase();
-  if (/qué hora|que hora/.test(t)) return speak('Son las ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) + '.');
+  // órdenes simples (música, temporizador, hora): Loona las hace sola, sin gastar Gemini
+  const lc = localCommand(text);
+  if (lc) { const r = lc.act ? await doAction(lc.act) : null; if (lc.say) await speak(lc.say); return r === 'bye' ? 'bye' : 'ok'; }
   if (!s.geminiKey) return speak('Para conversar de verdad necesito tu clave de Gemini. Ponla en el botón IA del inicio.');
   try {
     const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx() + await memCtx(), fast: true }));
@@ -262,7 +289,14 @@ export async function talk(text) {
     const warn = await runPending();
     await speak((ans || 'Listo.') + (warn && !ans.includes('choca') ? ' ' + warn : ''));
     return r === 'bye' || /\b(adi[oó]s|chau|chao|bye|nos vemos|cuelgo|colgar)\b/i.test(text) ? 'bye' : 'ok';
-  } catch (e) { return speak(e.message); }
+  } catch (e) { await speak(e.quota ? restingMsg(e) : e.message); return 'ok'; }
+}
+// cuando Gemini descansa, Loona lo dice una vez y sigue obedeciendo lo que no necesita a Gemini
+let restSaid = 0;
+export function restingMsg(e) {
+  if (Date.now() - restSaid < 10 * 60000) return 'Ahora no puedo pensar eso, pero música y temporizador sí.';
+  restSaid = Date.now();
+  return e.message + ' Mientras tanto sigo poniendo música, pausando y con el temporizador: solo dímelo.';
 }
 
 // Conversar mandando tu voz directo a Gemini (cuando el dictado del navegador no funciona)
@@ -270,14 +304,18 @@ async function talkAudio(blob, heard, { wake = false } = {}) {
   await refreshAgendaCtx();
   const s = await db.settings();
   if (!s.geminiKey) { heard.textContent = ''; return speak('Para escucharte necesito tu clave de Gemini. Ponla en el botón IA del inicio.'); }
+  if (geminiResting(s)) { heard.textContent = ''; return 'resting'; }
   heard.textContent = 'Pensando…';
   const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
   try {
     const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx() + await memCtx(), fast: true, parts: [
       { inline_data: { mime_type: (blob.type || 'audio/webm').split(';')[0], data: b64 } },
-      { text: 'Eso es un audio de Eve hablándote. ' + (wake ? 'IMPORTANTE: el micrófono está siempre abierto. Si en el audio Eve NO te llama por tu nombre (Loona, Luna, Lona, Luny, Loonie o Luni) o no te habla a ti, responde solo la palabra IGNORAR y nada más. ' : '') + 'Responde exactamente en este formato:\nDIJO: (lo que dijo, en una línea)\nLOONA: (tu respuesta)\n(y la línea ACCION solo si te pidió una orden)' }] });
+      { text: 'Eso es un audio de Eve hablándote. ' + (wake ? 'IMPORTANTE: el micrófono está siempre abierto. Si en el audio Eve NO te llama por tu nombre (Loona, Luna, Lona, Luny, Loonie o Luni) o no te habla a ti, responde solo la palabra IGNORAR y nada más. ' : '') + SING + ' Responde exactamente en este formato:\nDIJO: (lo que dijo o cantó, en una línea)\nLOONA: (tu respuesta)\n(y la línea ACCION solo si te pidió una orden o cantó/tarareó una canción)' }] });
     if (/^\s*IGNORAR\b/i.test(out)) { heard.textContent = ''; return 'ignored'; }
     const dijo = (out.match(/DIJO:\s*(.*)/i) || [])[1]?.trim() || '';
+    // si lo que dijo es una orden simple, la hago yo misma (más fiable)
+    const lc = dijo && localCommand(dijo);
+    if (lc && !/ACCION:\s*buscar/i.test(out)) { heard.textContent = '«' + dijo + '»'; const r = lc.act ? await doAction(lc.act) : null; if (lc.say) await speak(lc.say); return r === 'bye' ? 'bye' : 'ok'; }
     const [ans, act] = splitAction(((out.match(/LOONA:\s*([\s\S]*)/i) || [])[1] || out).trim());
     const r = await doAction(act || (saysMusic(ans) ? 'reproducir' : null)); await runPending();
     heard.textContent = dijo ? '«' + dijo + '»' : '';
@@ -285,8 +323,10 @@ async function talkAudio(blob, heard, { wake = false } = {}) {
     await speak(ans || 'Listo.');
     if (r === 'bye') return 'bye';
     return /\b(adi[oó]s|chau|chao|bye|nos vemos|hasta luego|cuelgo|colgar)\b/i.test(dijo) ? 'bye' : 'ok';
-  } catch (e) { heard.textContent = ''; await speak(e.message); return 'error'; }
+  } catch (e) { heard.textContent = ''; if (e.quota) { await speak(restingMsg(e)); return 'resting'; } await speak(e.message); return 'error'; }
 }
+// cantar o tararear: Loona reconoce la canción y la pone
+const SING = 'Si en el audio Eve canta, tararea o recita un pedazo de una canción (aunque no diga tu nombre, si antes te pidió que adivines o pongas la canción), identifica cuál es (artista y título) y agrega la línea ACCION: buscar: <artista> <título>. Si solo tararea sin letra y no estás segura, di tu mejor apuesta en una frase y pon igual la línea ACCION con esa apuesta. Si no tienes idea, pídele que cante un pedacito de la letra.';
 // ---------- modo ahorro ----------
 // Usa lo gratis del navegador (dictado para entenderte, voces naturales de Edge para hablar)
 // y Gemini solo para pensar la respuesta: así la cuota gratis dura mucho más.
@@ -444,6 +484,8 @@ function toggle() {
     h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Memoria:'),
       h('button', { class: 'chip', onclick: async () => { const m = await memoryText(); bubble(m ? 'Lo que recuerdo de nosotras:\n' + m.slice(0, 600) : 'Todavía no me acuerdo de nada. Cuéntame de ti cuando quieras.'); } }, 'Qué recuerdas'),
       h('button', { class: 'chip', onclick: async e => { if (e.target.dataset.ok) { await forget(); e.target.textContent = 'Memoria borrada'; } else { e.target.dataset.ok = 1; e.target.textContent = 'Toca otra vez para borrar'; } } }, 'Borrar memoria')),
+    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Si se acaba su voz de Google:'), ...[['1', 'Voz del celular'], ['0', 'Solo texto']].map(([k, n]) =>
+      h('button', { class: 'chip' + ((backupVoice() ? '1' : '0') === k ? ' on' : ''), onclick: e => { try { localStorage.setItem('loonaBackupVoice', k); } catch { } e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n))),
     h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Gasto:'), h('button', { class: 'chip' + (ahorro() ? ' on' : ''), onclick: e => { setAhorro(!ahorro()); e.target.classList.toggle('on', ahorro()); e.target.textContent = ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'; } }, ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no')));
   document.body.append(panel);
 }
