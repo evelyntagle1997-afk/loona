@@ -1420,3 +1420,11 @@ html.lite .ag-vp::before { animation: none; }
 .ag-note { padding: 4cqw 2.2cqw 2.6cqw !important; }
 .ag-note .ag-sign { font-size: 1.15cqw !important; }
 .ag-card b, .ag-card small { text-shadow: 0 0 .4cqw #000, 0 0 .2cqw #000; }
+/* v61 tarjetas equilibradas: cada una con su tono para distinguirlas */
+.ag-card.c1 { background: #f1ece4 url(../img/marco-top-claro.webp) top center / 100% auto no-repeat !important; }
+.ag-card.c1 b, .ag-card.c1 small { color: #151314 !important; text-shadow: 0 0 .4cqw #f1ece4, 0 0 .2cqw #f1ece4; }
+.ag-card.c2 { background: #2b292a url(../img/marco-top-grafito.webp) top center / 100% auto no-repeat !important; }
+.ag-card.c3 { background: #050505 url(../img/marco-top.webp) top center / 100% auto no-repeat !important; }
+.ag-card.c4 { background: #c9c5c7 url(../img/marco-top-claro.webp) top center / 100% auto no-repeat !important; filter: saturate(0); }
+.ag-card.c4 b, .ag-card.c4 small { color: #151314 !important; text-shadow: 0 0 .4cqw #d8d4d6, 0 0 .2cqw #d8d4d6; }
+.ag-card { background-size: 100% 70% !important; }
