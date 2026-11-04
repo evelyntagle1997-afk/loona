@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 62;
+export const APP_VERSION = 63;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -8,7 +8,9 @@ import { AMBIENTS, play as ambPlay, stop as ambStop, playing as ambPlaying, setV
 
 const coverOf = id => COVERS.find(c => c.id === id) || COVERS[0];
 
-export async function renderHome(app, go) {
+export async function renderHome(app, go0) {
+  // al salir del inicio, la agenda se cierra primero (tapa de cuero que gira)
+  const go = hash => closeAgenda().then(() => go0(hash));
   const subjects = (await db.all('subject')).sort((a, b) => (a.order ?? a.updatedAt) - (b.order ?? b.updatedAt));
   const nbs = await db.all('notebook'), pdfs = await db.all('pdf');
   const shelf = h('div', { class: 'shelf' });
@@ -68,12 +70,19 @@ export async function renderHome(app, go) {
     hot('ag-clip', 24.8, 0.5, 6.8, 16, 'Clip: tu cuenta en la nube y copia', () => settings('nube')),
     hot('ag-rings', 46.6, 9, 5.4, 82, 'Argollas: ajustes de la IA', () => settings('ia')),
     hot('ag-tab', 88, 27, 2.6, 12.5, 'Pestaña: letras y fuentes', () => settings('fuentes')),
-    hot('ag-strap', 91, 40.5, 7.2, 16, 'Broche: pantalla completa', () => toggleFull()),
+    hot('ag-strap', 91, 40.5, 7.2, 16, 'Broche: cerrar o abrir la agenda', () => toggleAgenda()),
     P('ag-page', 52, 12, 35, 75, idx),
     h('span', { class: 'ag-word', 'aria-hidden': 'true' }, 'Loona'),
     h('span', { class: 'ag-grain', 'aria-hidden': 'true' }),
     h('span', { class: 'ag-ver' }, 'v' + APP_VERSION));
+  // tapa delantera de cuero: abre la agenda al entrar
+  const cover = h('div', { class: 'ag-cover', 'aria-hidden': 'true' },
+    h('div', { class: 'agc-front' }, h('span', { class: 'agc-strap' }), h('span', { class: 'agc-name' }, 'Loona'), h('span', { class: 'agc-moon' })),
+    h('div', { class: 'agc-back' }));
+  scene.append(cover);
+  cover.addEventListener('click', () => openAgenda());
   const vp = h('div', { class: 'ag-vp' }, scene);
+  requestAnimationFrame(() => requestAnimationFrame(() => openAgenda()));
   // la nota cambia sola con la hora (madrugada, mañana, tarde, noche)
   const tick = setInterval(() => { if (!scene.isConnected) return clearInterval(tick); const g = saludo(); const q = c => scene.querySelector(c);
     if (q('.ag-hi')) q('.ag-hi').textContent = g.hi; if (q('.ag-date')) q('.ag-date').textContent = g.date; if (!noteText() && subjects.length && q('.ag-xo')) q('.ag-xo').textContent = g.line; }, 60000);
@@ -261,6 +270,21 @@ export function pomoTick() {
   chip.textContent = (st.kind === 'pausa' ? 'Descanso ' : 'Estudio ') + fmt(left);
   pomoT = setTimeout(pomoTick, 1000);
 }
+
+// ---------- abrir y cerrar la agenda ----------
+const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function coverEl() { return document.querySelector('.ag-cover'); }
+export function openAgenda() {
+  const c = coverEl(); if (!c) return Promise.resolve();
+  c.classList.remove('closing', 'shut'); c.classList.add('opening');
+  return new Promise(r => setTimeout(() => { c.classList.remove('opening'); c.classList.add('open'); r(); }, reduce() ? 0 : 1150));
+}
+export function closeAgenda() {
+  const c = coverEl(); if (!c || reduce()) return Promise.resolve();
+  c.classList.remove('open', 'opening'); c.classList.add('closing');
+  return new Promise(r => setTimeout(() => { c.classList.remove('closing'); c.classList.add('shut'); r(); }, 750));
+}
+function toggleAgenda() { const c = coverEl(); if (!c) return; if (c.classList.contains('shut')) openAgenda(); else closeAgenda(); }
 
 export function toggleFull() {
   if (document.fullscreenElement) document.exitFullscreen();
