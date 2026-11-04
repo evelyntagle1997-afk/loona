@@ -1557,3 +1557,5 @@ html.lite .ag-vp::before { animation: none; }
 @keyframes hintp { 50% { color: rgba(220,216,218,.9); } }
 @media (hover: hover) { .ag-cover.init:hover, .ag-cover.shut:hover { filter: brightness(1.08); } }
 @media (prefers-reduced-motion: reduce) { .agc-hint { animation: none; } }
+/* v78 al abrir, las tarjetas y recuerdos ya aparecen escritos (nunca en blanco) */
+.agenda.left .ag-note, .agenda.left .ag-card, .agenda.left .ag-deco:not(.ag-sello) { opacity: 1 !important; translate: none !important; transition-delay: 0s !important; transition-duration: .15s !important; }

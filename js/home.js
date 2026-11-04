@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 77;
+export const APP_VERSION = 78;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -322,7 +322,7 @@ export function openAgenda() {
   c.classList.add('unsnap');   // 1) se suelta el broche
   return new Promise(r => setTimeout(() => {
     c.classList.remove('closing', 'shut', 'unsnap', 'init'); c.classList.add('opening');   // 2) gira la tapa
-    sc?.classList.remove('closed');
+    sc?.classList.remove('closed'); sc?.classList.add('left');   // las tarjetas ya escritas desde que se abre la tapa
     setTimeout(() => {
       c.classList.remove('opening'); c.classList.add('open');
       const f = sc?.querySelector('.ag-flip'); if (f) { f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn'); }   // 3) pasa la primera hoja
@@ -333,7 +333,7 @@ export function openAgenda() {
 }
 export function closeAgenda() {
   const c = coverEl(); if (!c || reduce()) return Promise.resolve();
-  c.closest('.agenda')?.classList.remove('shown');
+  c.closest('.agenda')?.classList.remove('shown', 'left');
   c.classList.remove('open', 'opening'); c.classList.add('closing');
   setTimeout(() => c.closest('.agenda')?.classList.add('closed'), 380);
   return new Promise(r => setTimeout(() => { c.classList.remove('closing'); c.classList.add('shut'); r(); }, 750));
