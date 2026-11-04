@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 70;
+export const APP_VERSION = 71;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -59,9 +59,9 @@ export async function renderHome(app, go0) {
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    deco('polaroid', 31.4, 41.2, 6.4, 'rotate(6deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
-    deco('corazon', 29.8, 56, 5.6, 'rotate(-6deg)', 'Dato de medicina para el ENEM', medFact),
-    deco('sello', 32.4, 68, 4.4, 'rotate(12deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
+    deco('polaroid', 32.6, 36.6, 6.8, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
+    deco('corazon', 29.6, 54.5, 5.8, 'rotate(-5deg)', 'Dato de medicina para el ENEM', medFact),
+    deco('sello', 31.6, 70.5, 4.2, 'rotate(10deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     portada(),
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
     hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
@@ -73,6 +73,7 @@ export async function renderHome(app, go0) {
     hot('ag-strap', 91, 40.5, 7.2, 16, 'Broche: cerrar o abrir la agenda', () => toggleAgenda()),
     P('ag-page', 52, 12, 35, 75, idx),
     h('span', { class: 'ag-word', 'aria-hidden': 'true' }, 'Loona'),
+    h('span', { class: 'ag-light', 'aria-hidden': 'true' }),
     h('span', { class: 'ag-grain', 'aria-hidden': 'true' }),
     h('span', { class: 'ag-ver' }, 'v' + APP_VERSION));
   // tapa delantera de cuero: abre la agenda al entrar
