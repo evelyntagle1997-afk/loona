@@ -1406,3 +1406,17 @@ html.lite .ag-vp::before { animation: none; }
 .ag-portada.propia img { mix-blend-mode: normal; opacity: 1; border-radius: .3cqw; box-shadow: 0 .5cqw 1cqw rgba(0,0,0,.5); border: .35cqw solid #f1ede8; }
 @media (hover: hover) { .ag-portada:hover img { transform: scale(1.02); } }
 .ag-index { max-height: 40%; }
+/* v59 tarjetas negras con marco gótico de espinas (nota del clip y tarjetas de los bolsillos) */
+.ag-note { background: #050505 url(../img/marco.webp) center / 100% 100% no-repeat !important; color: #f2efec !important; box-shadow: 0 .4cqw .9cqw rgba(0,0,0,.55); border-radius: .2cqw !important; padding: 3.2cqw 2cqw 2cqw !important; transform: rotate(-.4deg); }
+.ag-note .ag-hi { color: #fff; text-shadow: 0 0 .6cqw rgba(255,255,255,.18); }
+.ag-note .ag-date { color: #b9b4b6 !important; }
+.ag-note .ag-xo { color: #e9e5e2; }
+.ag-note .ag-sign { color: #cfcacc !important; }
+.ag-card { background: #050505 url(../img/marco-top.webp) top center / 100% auto no-repeat !important; color: #f2efec !important; border-radius: .3cqw .3cqw 0 0; box-shadow: 0 -.2cqw .5cqw rgba(0,0,0,.35); padding-top: .5cqw !important; }
+.ag-card b { color: #fff !important; } .ag-card small { color: #b9b4b6 !important; opacity: 1 !important; }
+.ag-card.dim { opacity: .75; }
+.ag-clipimg { z-index: 3; pointer-events: none; height: auto; filter: drop-shadow(0 .2cqw .3cqw rgba(0,0,0,.6)); }
+.ag-clip { z-index: 4 !important; }
+.ag-note { padding: 4cqw 2.2cqw 2.6cqw !important; }
+.ag-note .ag-sign { font-size: 1.15cqw !important; }
+.ag-card b, .ag-card small { text-shadow: 0 0 .4cqw #000, 0 0 .2cqw #000; }

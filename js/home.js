@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 58;
+export const APP_VERSION = 59;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -47,7 +47,7 @@ export async function renderHome(app, go) {
 
   const scene = h('div', { class: 'agenda' },
     h('img', { class: 'ag-bg', src: 'img/agenda.webp', srcset: 'img/agenda-s.webp 1024w, img/agenda.webp 1536w', sizes: '(max-width: 700px) 1000px, 100vw', alt: '', draggable: false, fetchpriority: 'high' }),
-    h('button', { class: 'ag-z ag-note ag-hot', style: { left: '20.4%', top: '13.6%', width: '15.4%', height: '26.4%' }, 'aria-label': 'Nota del clip: escribe un recordatorio', title: 'Tu nota: toca para escribir un recordatorio', onclick: editNote },
+    h('button', { class: 'ag-z ag-note ag-hot', style: { left: '20%', top: '12.6%', width: '16.2%', height: '28.2%' }, 'aria-label': 'Nota del clip: escribe un recordatorio', title: 'Tu nota: toca para escribir un recordatorio', onclick: editNote },
       h('span', { class: 'ag-hi' }, saludo().hi),
       h('span', { class: 'ag-date' }, saludo().date),
       h('span', { class: 'ag-xo' }, noteText() || (subjects.length ? saludo().line : 'crea tu primera materia')),
@@ -64,6 +64,7 @@ export async function renderHome(app, go) {
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
     hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
     hot('ag-key', 39.6, 61.5, 4.2, 12, 'Llave: Loona te escucha siempre (manos libres)', () => import('./handsfree.js').then(m => m.toggle())),
+    h('img', { class: 'ag-z ag-clipimg', src: 'img/clip.webp', alt: '', draggable: false, style: { left: '24.4%', top: '0%', width: '7.4%' } }),
     hot('ag-clip', 24.8, 0.5, 6.8, 16, 'Clip: tu cuenta en la nube y copia', () => settings('nube')),
     hot('ag-rings', 46.6, 9, 5.4, 82, 'Argollas: ajustes de la IA', () => settings('ia')),
     hot('ag-tab', 88, 27, 2.6, 12.5, 'Pestaña: letras y fuentes', () => settings('fuentes')),

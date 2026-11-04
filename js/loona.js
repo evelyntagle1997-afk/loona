@@ -28,7 +28,7 @@ export async function aiText(s, prompt, { history = [], system, parts, fast = fa
 
 // ---------- voz ----------
 const VOICE_KEY = 'loonaVoice';   // 'ia' | 'equipo' | 'off'
-export const voiceMode = () => { try { return localStorage.getItem(VOICE_KEY) || 'ia'; } catch { return 'ia'; } };
+export const voiceMode = () => { try { return localStorage.getItem(VOICE_KEY) === 'off' ? 'off' : 'ia'; } catch { return 'ia'; } };
 export const setVoiceMode = v => { try { localStorage.setItem(VOICE_KEY, v); } catch { } };
 const PREF = [/Dalia.*Natural/i, /Ximena.*Natural/i, /Elvira.*Natural/i, /Paloma.*Natural/i, /Salome.*Natural/i, /Francisca.*Natural/i, /(es-|Spanish).*(Natural|Online)/i, /Google español de Estados Unidos/i, /Google español/i, /Paulina|Monica|Mónica|Marisol|Helena|Lucia|Sabina/i];
 let sysVoice = null;
@@ -96,18 +96,14 @@ export async function speak(text) {
 }
 async function speak0(text) {
   bubble(text);
-  const mode = voiceMode(); if (mode === 'off') return;
+  if (voiceMode() === 'off') return;
+  const s = await db.settings();
+  if (!s.geminiKey || !navigator.onLine) return;   // sin la voz de Loona, solo texto (nunca otra voz)
   const M = await import('./music.js').catch(() => null);
   M?.duck(true, 'voz');   // la música baja suave mientras Loona habla
-  try {
-    const s = await db.settings();
-    if (ttsFails >= 3 && Date.now() - ttsFailAt > 5 * 60000) ttsFails = 0;   // vuelve a intentar la voz natural cada 5 min
-    const free = ahorro() && naturalVoice();   // en Edge hay voces naturales gratis: no gasto Gemini
-    if (mode === 'ia' && !free && s.geminiKey && navigator.onLine && ttsFails < 3) {
-      try { await sayAI(s, text); ttsFails = 0; return; } catch (e) { console.warn(e); ttsFails++; ttsFailAt = Date.now(); if (ttsFails === 3) toast('La voz natural de Gemini no responde ahora; uso la voz del equipo un rato.', 3500); }
-    }
-    await sayDevice(text);
-  } finally { M?.duck(false, 'voz'); }
+  try { await sayAI(s, text); }
+  catch (e) { console.warn(e); if (!speak0.warned) { speak0.warned = 1; toast('La voz de Loona no está disponible ahora; te respondo por escrito.', 3500); } }
+  finally { M?.duck(false, 'voz'); }
 }
 export function bubble(text) {
   let b = document.getElementById('loona-say');
@@ -118,7 +114,8 @@ export function bubble(text) {
 // ---------- saludos ----------
 const hourSaludo = () => { const hr = new Date().getHours(); return hr < 5 ? 'Buenas noches' : hr < 12 ? 'Buenos días' : hr < 19 ? 'Buenas tardes' : 'Buenas noches'; };
 export function greet(where = 'open', subject) {
-  try { const k = 'loonaGreet-' + where, t = +localStorage.getItem(k) || 0; if (Date.now() - t < 40 * 60 * 1000) return; localStorage.setItem(k, Date.now()); } catch { }
+  if (where !== 'home') return;   // solo saluda al abrir la agenda
+  try { const k = 'loonaGreet-' + where, t = +localStorage.getItem(k) || 0; if (Date.now() - t < 6 * 3600 * 1000) return; localStorage.setItem(k, Date.now()); } catch { }
   const sal = hourSaludo();
   const lines = where === 'home'
     ? [`${sal}, Eve. Ya era hora.`, `Oh, mira quién decidió estudiar hoy. ${sal}, Eve.`, `Hola, Eve. No te extrañé. Bueno… un poquito.`, `${sal}, Eve. El ENEM no se va a aprobar solo, ¿sabías?`, `Ugh, Eve. Llegaste. ¿Qué estudiamos?`, `${sal}. Medicina en la UNILA, ¿te acuerdas? Ya, a trabajar.`]
@@ -126,6 +123,7 @@ export function greet(where = 'open', subject) {
   speak(lines[Math.floor(Math.random() * lines.length)]);
 }
 export function farewell() {
+  return;   // ya no se despide en voz alta (solo habla para saludar o cuando le hablas)
   const hr = new Date().getHours();
   const L = hr >= 19 ? ['Buenas noches, Eve. Hoy lo hiciste bien, aunque no lo admitas.', 'Ve a dormir. Ojeras de estudiante de medicina todavía no, por favor.', 'Bien hecho. No le digas a nadie que fui amable. XOXO.']
     : ['Guardo todo. No tardes en volver.', '¿Ya te vas? Ugh. Bueno, aquí te espero.', 'Listo. Si vuelves en cinco minutos, no me quejo.'];
@@ -249,8 +247,8 @@ function startCall(btn, heard) {
     next(r) {
       if (!call) return;
       if (r === 'bye' || r === 'error') return endCall(r === 'bye' ? null : '');
-      if (r === 'silence') { silences++; if (silences >= 2) return endCall('Ok. Me voy. Lo que sea.');
-        return speak(silences === 1 ? '¿Hola? ¿Me dejaste en visto?' : '').then(() => call && hearTurn(btn, heard)); }
+      if (r === 'silence') { silences++; if (silences >= 2) return endCall();
+        return call && hearTurn(btn, heard); }
       silences = 0; setTimeout(() => call && hearTurn(btn, heard), 250);
     },
   };
@@ -350,13 +348,12 @@ function toggle() {
     const r = await L.tryLive();
     if (r !== true) { off(); mic.innerHTML = icon('mic', 18) + 'Conversar'; if (r === false) startCall(mic, heard); }
   });
-  const vsel = h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Voz:'), ...[['ia', 'IA (más natural)'], ['equipo', 'Del equipo'], ['off', 'Sin voz']].map(([k, n]) =>
+  const vsel = h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Voz:'), ...[['ia', 'Su voz'], ['off', 'Solo texto']].map(([k, n]) =>
     h('button', { class: 'chip' + (voiceMode() === k ? ' on' : ''), onclick: e => { setVoiceMode(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n)));
   panel = h('div', { class: 'loona-panel leather-panel', role: 'dialog', 'aria-label': 'Loona' },
     h('div', { class: 'loona-head' }, h('b', {}, 'Loona'), h('button', { class: 'icbtn', 'aria-label': 'Cerrar', html: icon('close', 18), onclick: toggle })),
     heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel, hfRow(),
-    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Gasto:'), h('button', { class: 'chip' + (ahorro() ? ' on' : ''), onclick: e => { setAhorro(!ahorro()); e.target.classList.toggle('on', ahorro()); e.target.textContent = ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'; } }, ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'),
-      h('span', { class: 'opt-hint' }, naturalVoice() ? 'voz natural gratis lista' : 'para voz natural gratis usa Edge')));
+    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Gasto:'), h('button', { class: 'chip' + (ahorro() ? ' on' : ''), onclick: e => { setAhorro(!ahorro()); e.target.classList.toggle('on', ahorro()); e.target.textContent = ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'; } }, ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no')));
   document.body.append(panel);
 }
 async function listen(btn, heard) {

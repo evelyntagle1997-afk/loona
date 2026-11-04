@@ -3,7 +3,7 @@
 // detecta cuando hablas y Gemini decide si le hablaste a Loona (usa tu cuota gratuita de Gemini).
 import * as db from './db.js';
 import { h, toast } from './ui.js';
-import { talk, talkAudio, speak, isBusy } from './loona.js';
+import { talk, talkAudio, speak, isBusy, bubble } from './loona.js';
 
 const KEY = 'loonaHF';
 const WAKE = /\b(loona|luna|lona|lunna|louna|luny|luni|lunny|loonie|looney|loony|lunita|lúni|lunie|lunei)\b[,.!¿?\s]*/i;
@@ -28,12 +28,12 @@ export async function start(user) {
   let srOff = false; try { srOff = localStorage.getItem('hfEngine') === 'gemini'; } catch { }
   const beeps = /Android/i.test(navigator.userAgent);   // en Android el dictado suena como radio cada vez: uso el motor silencioso
   if (SR && !srOff && !beeps) startSR(SR); else await startVAD();
-  if (user && on) speak('Ugh. Bien. Te escucho todo el rato. Di «Luny» y lo que quieras.');
+  if (user && on) { bubble('Te escucho. Di «Luny» y lo que quieras.'); }
 }
 export function stop(user) {
   on = false; try { localStorage.removeItem(KEY); } catch { }
   engine?.stop(); engine = null; mark(null);
-  if (user) speak('Ok. Silencio. Por fin.');
+  if (user) bubble('Ok. Ya no escucho.');
 }
 // al abrir la app: si lo dejaste prendido, vuelve solo (si el navegador ya dio permiso al micrófono)
 export async function resume() {

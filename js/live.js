@@ -54,7 +54,7 @@ export async function startLive({ firstText = '', onEnd } = {}) {
   catch { throw new Error('Permite el micrófono para hablar con Loona.'); }
   const setup = {
     generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } }, languageCode: 'es-US' } },
-    systemInstruction: { parts: [{ text: PERSONA + nowCtx() + '\nEstás en una llamada de voz en vivo con Eve: habla natural y fluido como una persona, frases cortas, sin listas. Si te interrumpe, para y escúchala. Usa la herramienta "orden" cuando te pida música, temporizador o pantalla; cuando ella se despida, usa orden colgar.' }] },
+    systemInstruction: { parts: [{ text: PERSONA + nowCtx() + '\nEstás en una llamada de voz en vivo con Eve: habla natural y fluido como una persona, frases cortas, sin listas. Cuando Eve te da una orden (música, temporizador), hazla y responde con dos o tres palabras o nada; no hables si no te hablan. Si te interrumpe, para y escúchala. Usa la herramienta "orden" cuando te pida música, temporizador o pantalla; cuando ella se despida, usa orden colgar.' }] },
     tools: [ORDER_TOOL],
     inputAudioTranscription: {}, outputAudioTranscription: {},
   };
@@ -90,7 +90,7 @@ export async function startLive({ firstText = '', onEnd } = {}) {
   };
   // --- mensajes de Gemini ---
   let said = '', heard = '', idle = 0;
-  const bump = () => { clearTimeout(idle); idle = setTimeout(() => stopLive('Ok. Me voy. Lo que sea.'), 45000); };   // cuelga sola si nadie habla
+  const bump = () => { clearTimeout(idle); idle = setTimeout(() => stopLive(), 45000); };   // cuelga sola si nadie habla
   ws.onmessage = async ev => {
     const m = JSON.parse(typeof ev.data === 'string' ? ev.data : await ev.data.text());
     const sc = m.serverContent;
@@ -116,7 +116,7 @@ export async function startLive({ firstText = '', onEnd } = {}) {
   S = { ws, mic, inp, out, node, hush, onEnd, model: conn.model };
   bump(); emit({ on: true, model: conn.model });
   if (firstText) ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: firstText }] }], turnComplete: true } }));
-  else ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: '(Eve acaba de abrir la llamada. Salúdala con una frase corta y seca.)' }] }], turnComplete: true } }));
+  // sin saludo: Loona espera a que le hables
   return S;
 }
 
