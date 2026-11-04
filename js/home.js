@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 79;
+export const APP_VERSION = 80;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -284,7 +284,7 @@ async function editNote(e) {
 let pomoT = 0;
 export function pomodoro() {
   const st = (() => { try { return JSON.parse(localStorage.getItem('pomo')); } catch { return null; } })();
-  const run = (min, kind) => { try { localStorage.setItem('pomo', JSON.stringify({ end: Date.now() + min * 60000, kind })); } catch { } m.close(); pomoTick(); toast(kind === 'pausa' ? `Descanso de ${min} min` : `A estudiar ${min} min. Te aviso al terminar.`, 2500); };
+  const run = (min, kind) => { try { localStorage.setItem('pomo', JSON.stringify({ end: Date.now() + min * 60000, kind })); } catch { } m.close(); pomoTick(); if (kind === 'pausa') import('./music.js').then(M => M.control('buscar', M.pickTaste())); toast(kind === 'pausa' ? `Descanso de ${min} min` : `A estudiar ${min} min. Te aviso al terminar.`, 2500); };
   const m = modal({ title: 'Temporizador', body: h('div', { class: 'pomo-box' },
     h('p', {}, st && st.end > Date.now() ? `Faltan ${fmt(st.end - Date.now())} (${st.kind}).` : 'Estudia concentrada y descansa un poco. Loona te avisa.'),
     h('div', { class: 'ie-row' },

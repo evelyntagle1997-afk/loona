@@ -63,7 +63,7 @@ export async function startLive({ firstText = '', onEnd } = {}) {
   catch { throw new Error('Permite el micrófono para hablar con Loona.'); }
   const setup = {
     generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } }, languageCode: 'es-US' } },
-    systemInstruction: { parts: [{ text: PERSONA + nowCtx() + (await memCtx()) + '\nEstás en una llamada de voz en vivo con Eve: habla natural y fluido como una persona, frases cortas, sin listas. Cuando Eve te da una orden (música, temporizador), hazla y responde con dos o tres palabras o nada; no hables si no te hablan. Si te interrumpe, para y escúchala. Usa la herramienta "orden" cuando te pida música, temporizador o pantalla; cuando ella se despida, usa orden colgar.' }] },
+    systemInstruction: { parts: [{ text: PERSONA + nowCtx() + (await memCtx()) + '\nEstás en una llamada de voz en vivo con Eve: habla natural y fluido como una persona, frases cortas, sin listas. Cuando Eve te da una orden (música, temporizador), hazla y responde con dos o tres palabras o nada; no hables si no te hablan. Si te interrumpe, para y escúchala. Usa la herramienta "orden" cuando te pida música (si pide una canción: orden buscar con el nombre; si solo dice música: orden reproducir), temporizador o pantalla; nunca digas que pusiste música sin usar la herramienta; cuando ella se despida, usa orden colgar.' }] },
     tools: [ORDER_TOOL],
     inputAudioTranscription: {}, outputAudioTranscription: {},
   };

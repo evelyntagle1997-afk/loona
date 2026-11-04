@@ -29,7 +29,7 @@ const last = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch
 export async function control(cmd, arg) {
   if (cmd === 'buscar') return playSearch(arg);
   if (!box || !player?.getPlayerState) {
-    if (cmd === 'reproducir') { openMusic(); return true; }
+    if (cmd === 'reproducir') { if (last()) openMusic(); else playSearch(arg || pickTaste()); return true; }
     return false;
   }
   const v = () => player.getVolume?.() ?? 50;
@@ -77,12 +77,15 @@ export function duck(on, reason = 'x') {
 // poner un video por id o enlace
 export function playUrl(url, { videoOnly = false } = {}) {
   const p = parse(url); if (!p) return false; save(p);
-  if (box && startRef) { box.hidden = false; box.classList.remove('mini'); startRef(p); }
+  if (box && startRef) { box.hidden = false; box.classList.remove('mini', 'novideo'); startRef(p); }
   else openMusic(p);   // abre el reproductor y pone esta canción (una sola vez)
   if (videoOnly) setTimeout(() => { box?.classList.remove('novideo', 'mini'); box?.classList.add('vonly'); }, 400);
   return true;
 }
 let startRef = null;
+// si Loona elige sola: algo del estilo de Eve
+const TASTE = ['Chris Grey', 'Arctic Monkeys', 'The Neighbourhood', 'Cigarettes After Sex', 'The 1975', 'Lana Del Rey', 'Mazzy Star', 'Deftones', 'Billie Eilish'];
+export const pickTaste = () => TASTE[Math.floor(Math.random() * TASTE.length)] + ' canción popular';
 // ¿existe ese video? (oEmbed de YouTube, sin clave)
 async function exists(id) {
   try { const c = new AbortController(); const t = setTimeout(() => c.abort(), 3500);
@@ -109,7 +112,7 @@ async function playSearch(q) {
   }
   for (const id of ids.slice(0, 4)) {
     const ok = await exists(id);
-    if (ok !== false) return playUrl('https://www.youtube.com/watch?v=' + id, { videoOnly: true });
+    if (ok !== false) return playUrl('https://www.youtube.com/watch?v=' + id);
   }
   toast('No encontré «' + q + '» en YouTube. Prueba con el nombre del artista y la canción.', 4000);
   return false;
@@ -182,9 +185,20 @@ export function openMusic(first) {
     try { await loadApi(); } catch (e) { return toast(e.message); }
     const opts = { playerVars: { playsinline: 1, rel: 0, modestbranding: 1, ...(p.list ? { listType: 'playlist', list: p.list } : {}) },
       events: { onError: () => toast('Ese video no se puede reproducir aquí. Prueba otro enlace.', 3500), onStateChange: ev => { if (ev.data === 1) autoHide?.(); playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
-    if (player?.loadVideoById) { if (p.list) player.loadPlaylist({ list: p.list, listType: 'playlist', index: 0 }); else player.loadVideoById(p.v); return; }
+    if (player?.loadVideoById) { if (p.list) player.loadPlaylist({ list: p.list, listType: 'playlist', index: 0 }); else player.loadVideoById(p.v); ensureSound(); return; }
     player = new YT.Player('yt-frame', { ...opts, videoId: p.v || undefined, height: '100%', width: '100%' });
-    player.addEventListener?.('onReady', () => player.playVideo());
+    player.addEventListener?.('onReady', () => { ensureSound(); });
+  }
+  // que suene de verdad: volumen audible y, si el navegador bloquea el audio automático, lo arranca y avisa
+  function ensureSound() {
+    try { player.unMute(); if ((player.getVolume?.() ?? 100) < 40 && base == null) player.setVolume(70); player.playVideo(); } catch { }
+    setTimeout(() => {
+      if (!player?.getPlayerState) return;
+      if (player.getPlayerState() !== 1) {
+        try { player.mute(); player.playVideo(); setTimeout(() => { try { player.unMute(); } catch { } }, 600); } catch { }
+        setTimeout(() => { if (player?.getPlayerState?.() !== 1 || player?.isMuted?.()) { box?.classList.remove('vonly', 'mini'); toast('Toca ▶ en el reproductor para que suene (el navegador pidió un toque).', 4500); } }, 1800);
+      }
+    }, 1500);
   }
   startRef = start;
   const l = first || last(); if (l) start(l); else inp.focus();
