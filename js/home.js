@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 46;
+export const APP_VERSION = 47;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -87,60 +87,64 @@ export async function renderHome(app, go) {
 function initPocket(pocket) {
   const get = k => { try { return localStorage.getItem(k); } catch { return null; } };
   const set = (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };
-  let photo = get('homePhoto'), pos = { x: 0, y: 0, s: 1 }, adj = false, menuT = 0;
+  let photo = get('homePhoto'), pos = { x: 0, y: 0, s: 1, r: 0 }, menuT = 0;
   try { pos = { ...pos, ...JSON.parse(get('homePhotoPos') || '{}') }; } catch { }
+  const tf = p => `translate(${p.x * 100}%, ${p.y * 100}%) rotate(${p.r}deg) scale(${p.s})`;
   const img = h('img', { alt: '', draggable: false });
-  const place = () => { img.style.transform = `translate(${pos.x * 100}%, ${pos.y * 100}%) scale(${pos.s})`; };
   const bar = h('div', { class: 'pk-bar' });
   const b = (txt, fn, cls = '') => h('button', { class: 'pk-b ' + cls, onclick: e => { e.stopPropagation(); fn(); } }, txt);
   const draw = () => {
-    if (photo) { img.src = photo; place(); pocket.replaceChildren(img, bar); }
+    if (photo) { img.src = photo; img.style.transform = tf(pos); pocket.replaceChildren(img, bar); }
     else pocket.replaceChildren(h('span', { class: 'ag-pocket-t' }, 'Toca para poner tu foto'));
   };
-  const zoom = k => { pos.s = Math.max(1, Math.min(4, pos.s * k)); place(); };
-  const startAdjust = () => {
-    adj = true; pocket.classList.add('adj'); clearTimeout(menuT);
-    bar.replaceChildren(b('−', () => zoom(1 / 1.15)), b('+', () => zoom(1.15)), b('Listo', finish, 'ok'));
-    toast('Arrastra la foto para acomodarla. Usa + y − para el tamaño.', 3000);
+  // editor grande: la foto se acomoda en un marco con la misma forma del bolsillo
+  const editor = () => {
+    const r = pocket.getBoundingClientRect(), ratio = r.width / r.height;
+    const W = Math.min(innerWidth - 60, 460), H = W / ratio;
+    const p = { ...pos };
+    const im = h('img', { src: photo, alt: '', draggable: false });
+    const frame = h('div', { class: 'pk-frame', style: { width: W + 'px', height: H + 'px' } }, im);
+    const put = () => { im.style.transform = tf(p); };
+    const zoom = k => { p.s = Math.max(.3, Math.min(5, p.s * k)); put(); };
+    const pts = new Map(); let last = null;
+    frame.addEventListener('pointerdown', e => { e.preventDefault(); frame.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); last = null; });
+    frame.addEventListener('pointermove', e => {
+      if (!pts.has(e.pointerId)) return;
+      const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size >= 2) { const [a, c] = [...pts.values()], d = Math.hypot(a[0] - c[0], a[1] - c[1]); if (last) zoom(d / last); last = d; return; }
+      p.x = Math.max(-1.5, Math.min(1.5, p.x + (e.clientX - prev[0]) / W)); p.y = Math.max(-1.5, Math.min(1.5, p.y + (e.clientY - prev[1]) / H)); put();
+    });
+    const up = e => { pts.delete(e.pointerId); if (pts.size < 2) last = null; };
+    frame.addEventListener('pointerup', up); frame.addEventListener('pointercancel', up);
+    frame.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(-e.deltaY * .002)); }, { passive: false });
+    put();
+    const m = modal({ title: 'Acomoda tu foto', body: h('div', { class: 'pk-ed' },
+      h('p', { class: 'opt-hint' }, 'Arrastra la foto con el dedo o el mouse. Pellizca o usa + y − para el tamaño.'),
+      frame,
+      h('div', { class: 'ie-row pk-tools' },
+        h('button', { class: 'btn', onclick: () => zoom(1 / 1.12) }, '−'), h('button', { class: 'btn', onclick: () => zoom(1.12) }, '+'),
+        h('button', { class: 'btn', onclick: () => { p.r -= 90; put(); } }, '↺ Girar'),
+        h('button', { class: 'btn', onclick: () => { Object.assign(p, { x: 0, y: 0, s: 1, r: 0 }); put(); } }, 'Centrar'),
+        h('button', { class: 'btn', onclick: () => { m.close(); change(); } }, 'Otra foto'))),
+      actions: [{ label: 'Cancelar' }, { label: 'Listo', primary: true, onclick: () => { pos = p; set('homePhotoPos', JSON.stringify(pos)); draw(); toast('Foto fija', 1200); } }] });
   };
-  const finish = () => { adj = false; pocket.classList.remove('adj'); bar.replaceChildren(); set('homePhotoPos', JSON.stringify(pos)); toast('Foto fija', 1200); };
   const change = async () => {
     const f = await pickFile('image/*'); if (!f) return;
-    const bm = await createImageBitmap(f); const sc = Math.min(1, 900 / Math.max(bm.width, bm.height));
+    const bm = await createImageBitmap(f); const sc = Math.min(1, 1000 / Math.max(bm.width, bm.height));
     const c = document.createElement('canvas'); c.width = bm.width * sc; c.height = bm.height * sc;
     const x = c.getContext('2d'); x.filter = 'grayscale(1) contrast(1.15)'; x.drawImage(bm, 0, 0, c.width, c.height);
     const url = c.toDataURL('image/jpeg', .8);
     if (!set('homePhoto', url)) return toast('La foto es muy grande');
-    photo = url; pos = { x: 0, y: 0, s: 1 }; draw(); startAdjust();
+    // empieza llenando el bolsillo (luego la acomodas como quieras)
+    const pr = pocket.getBoundingClientRect(), fr = pr.width / pr.height, ir = c.width / c.height;
+    photo = url; pos = { x: 0, y: 0, s: +Math.max(fr / ir, ir / fr).toFixed(3), r: 0 }; draw(); editor();
   };
   pocket.addEventListener('click', () => {
-    if (adj) return;
     if (!photo) return change();
-    bar.replaceChildren(b('Mover', startAdjust), b('Cambiar', change));   // menú pequeño; se esconde solo
-    clearTimeout(menuT); menuT = setTimeout(() => { if (!adj) bar.replaceChildren(); }, 3500);
+    bar.replaceChildren(b('Acomodar', editor), b('Cambiar', change));   // menú pequeño; se esconde solo
+    clearTimeout(menuT); menuT = setTimeout(() => bar.replaceChildren(), 3500);
   });
   pocket.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pocket.click(); } });
-  // arrastrar (un dedo o mouse) y pellizcar (dos dedos) solo mientras se ajusta
-  const pts = new Map(); let last = null;
-  pocket.addEventListener('pointerdown', e => {
-    if (!adj || e.target.closest('.pk-b')) return;
-    e.preventDefault(); e.stopPropagation(); pocket.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); last = null;
-  });
-  pocket.addEventListener('pointermove', e => {
-    if (!adj || !pts.has(e.pointerId)) return;
-    const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
-    const r = pocket.getBoundingClientRect();
-    if (pts.size >= 2) {
-      const [a, c] = [...pts.values()], d = Math.hypot(a[0] - c[0], a[1] - c[1]);
-      if (last) zoom(d / last); last = d; return;
-    }
-    pos.x += (e.clientX - prev[0]) / r.width; pos.y += (e.clientY - prev[1]) / r.height;
-    const lim = (pos.s - 1) / 2 + .35; pos.x = Math.max(-lim, Math.min(lim, pos.x)); pos.y = Math.max(-lim, Math.min(lim, pos.y));
-    place();
-  });
-  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) last = null; };
-  pocket.addEventListener('pointerup', up); pocket.addEventListener('pointercancel', up);
-  pocket.addEventListener('wheel', e => { if (!adj) return; e.preventDefault(); zoom(Math.exp(-e.deltaY * .002)); }, { passive: false });
   draw();
 }
 

@@ -1352,3 +1352,17 @@ button.ag-z { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ag-charm, .ag-medal, .ag-key { z-index: 3 !important; }
 .pomo-chip { position: fixed; z-index: 46; left: 50%; top: calc(10px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); border: 0; border-radius: 999px; padding: 6px 14px; font: 600 14px system-ui, sans-serif; font-variant-numeric: tabular-nums; color: #111; background: linear-gradient(#f2b45a, #d48a2c); box-shadow: 0 4px 12px rgba(0,0,0,.5); cursor: pointer; }
 .pomo-box .ie-row { flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+/* v47 editor de la foto del bolsillo */
+.ag-pocket img { object-fit: contain; }
+.pk-ed { display: grid; justify-items: center; gap: 12px; }
+.pk-frame { position: relative; overflow: hidden; border-radius: 6px; background: #1a1a1a; touch-action: none; cursor: grab; box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+.pk-frame:active { cursor: grabbing; }
+.pk-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform-origin: center; user-select: none; pointer-events: none; }
+.pk-tools { flex-wrap: wrap; justify-content: center; gap: 6px; }
+/* v47 YouTube: tamaño libre */
+.yt { max-width: calc(100vw - 8px); }
+.yt-grip { position: absolute; right: 0; bottom: 0; width: 26px; height: 26px; cursor: nwse-resize; touch-action: none; z-index: 3;
+  background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,.55) 50% 56%, transparent 56% 66%, rgba(255,255,255,.55) 66% 72%, transparent 72%); opacity: .7; }
+.yt.vonly .yt-grip { opacity: .35; } .yt.vonly:hover .yt-grip { opacity: .9; }
+@media (hover: none) { .yt-grip { width: 34px; height: 34px; opacity: .8; } }
+.yt.mini .yt-grip { display: none; }

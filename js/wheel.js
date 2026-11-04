@@ -125,6 +125,7 @@ export class Wheel {
     }
     if (nb) out.push({ k: 'nb-solve', cat: 'resolver', group: 'nb', icon: 'calc', name: 'Resolver matemáticas paso a paso', run: () => A.solve({}) },
       { k: 'nb-rec', cat: 'resolver', group: 'nb', icon: 'mic', name: 'Grabar la clase (la IA la transcribe y la resume)', run: () => A.record() });
+    out.push({ k: 'loona-talk', cat: 'resolver', group: 'all', icon: 'moon', name: 'Hablar con Loona (música, temporizador, dudas)', run: () => import('./loona.js').then(m => m.callLoona()) });
     out.push(
       // flechas
       { k: 'undo', cat: 'flechas', group: 'all', icon: 'undo', name: 'Deshacer', run: () => pv ? pv.doUndo() : nb.undo() },

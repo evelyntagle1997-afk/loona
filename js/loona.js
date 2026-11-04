@@ -67,8 +67,13 @@ async function sayAI(s, text) {
   throw new Error('sin modelo de voz');
 }
 let bubbleT;
+let speaking = 0;
+export const isBusy = () => !!(call || recNow || speaking);
 export async function speak(text) {
   if (!text) return;
+  speaking++; try { return await speak0(text); } finally { setTimeout(() => speaking--, 400); }
+}
+async function speak0(text) {
   bubble(text);
   const mode = voiceMode(); if (mode === 'off') return;
   const s = await db.settings();
@@ -127,6 +132,12 @@ export async function doAction(a) {
   if (cmd === 'inicio') { location.hash = '#/'; return; }
   if (cmd === 'colgar') return 'bye';
 }
+// qué está estudiando Eve ahora mismo (para que Loona hable con contexto)
+function nowCtx() {
+  if (!/^#\/(e|s|n)/.test(location.hash)) return '';
+  let l = null; try { l = JSON.parse(localStorage.getItem('lastStudy')); } catch { }
+  return l ? `\nAhora mismo Eve está estudiando: «${l.title}»${l.subject ? ' (materia: ' + l.subject + ')' : ''}${l.page ? ', página ' + l.page : ''}. Si pregunta por "esto" o "este tema", se refiere a eso.` : '';
+}
 const splitAction = out => { const m = out.match(/\n?\s*ACCION:\s*(.+)\s*$/i); return m ? [out.slice(0, m.index).trim(), m[1].trim()] : [out.trim(), null]; };
 export async function talk(text) {
   const s = await db.settings();
@@ -134,7 +145,7 @@ export async function talk(text) {
   if (/qué hora|que hora/.test(t)) return speak('Son las ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) + '.');
   if (!s.geminiKey) return speak('Para conversar de verdad necesito tu clave de Gemini. Ponla en el botón IA del inicio.');
   try {
-    const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS }));
+    const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx() }));
     chat.push({ role: 'user', parts: [{ text }] }, { role: 'model', parts: [{ text: ans }] });
     doAction(act);
     return speak(ans || 'Listo.');
@@ -142,15 +153,16 @@ export async function talk(text) {
 }
 
 // Conversar mandando tu voz directo a Gemini (cuando el dictado del navegador no funciona)
-async function talkAudio(blob, heard) {
+async function talkAudio(blob, heard, { wake = false } = {}) {
   const s = await db.settings();
   if (!s.geminiKey) { heard.textContent = ''; return speak('Para escucharte necesito tu clave de Gemini. Ponla en el botón IA del inicio.'); }
   heard.textContent = 'Pensando…';
   const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
   try {
-    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA + ORDERS, parts: [
+    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx(), parts: [
       { inline_data: { mime_type: (blob.type || 'audio/webm').split(';')[0], data: b64 } },
-      { text: 'Eso es un audio de Eve hablándote. Responde exactamente en este formato:\nDIJO: (lo que dijo, en una línea)\nLOONA: (tu respuesta)\n(y la línea ACCION solo si te pidió una orden)' }] });
+      { text: 'Eso es un audio de Eve hablándote. ' + (wake ? 'IMPORTANTE: el micrófono está siempre abierto. Si en el audio Eve NO te llama por tu nombre (Loona, Luna o Lona) o no te habla a ti, responde solo la palabra IGNORAR y nada más. ' : '') + 'Responde exactamente en este formato:\nDIJO: (lo que dijo, en una línea)\nLOONA: (tu respuesta)\n(y la línea ACCION solo si te pidió una orden)' }] });
+    if (/^\s*IGNORAR\b/i.test(out)) { heard.textContent = ''; return 'ignored'; }
     const dijo = (out.match(/DIJO:\s*(.*)/i) || [])[1]?.trim() || '';
     const [ans, act] = splitAction(((out.match(/LOONA:\s*([\s\S]*)/i) || [])[1] || out).trim());
     const r = await doAction(act);
@@ -225,6 +237,8 @@ export function mountLoona() {
   if (document.getElementById('loona-fab')) return;
   const fab = h('button', { id: 'loona-fab', class: 'loona-fab', 'aria-label': 'Hablar con Loona', title: 'Hablar con Loona', html: `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15.5 3.5a8.5 8.5 0 1 0 5 13.9A7 7 0 1 1 15.5 3.5z" fill="currentColor"/></svg>` });
   fab.addEventListener('click', () => toggle());
+  // atajo de teclado: Alt + L para conversar con Loona desde cualquier pantalla
+  addEventListener('keydown', e => { if (e.altKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); callLoona(); } });
   document.body.append(fab);
   // se puede arrastrar a donde quieras
   let st = null;
@@ -236,6 +250,7 @@ export function mountLoona() {
   try { const p = JSON.parse(localStorage.getItem('loonaFab')); if (p) Object.assign(fab.style, { left: p.l, top: p.t, right: 'auto', bottom: 'auto' }); } catch { }
 }
 // abrir el panel y empezar a conversar por voz de una vez (lo usa el cristal ámbar)
+export { talkAudio };
 export function callLoona() {
   if (!panel) toggle();
   const b = panel?.querySelector('.btn.primary'); if (b && !b.classList.contains('oncall')) b.click();

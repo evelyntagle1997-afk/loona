@@ -1,7 +1,7 @@
 // Reproductor de YouTube flotante: música mientras estudias, con controles y se puede mover u ocultar.
 import { h, icon, toast } from './ui.js';
 
-let box = null, player = null, apiP = null;
+let box = null, player = null, apiP = null, autoHide = null;
 const KEY = 'ytLast';
 function loadApi() {
   if (window.YT?.Player) return Promise.resolve();
@@ -113,7 +113,15 @@ export function openMusic() {
   // modo "solo video": se ocultan todos los botones; queda una pestañita casi invisible para volver y para mover el video
   const back = h('button', { class: 'yt-back', 'aria-label': 'Mostrar los botones', title: 'Mostrar los botones', html: icon('music', 16) });
   const onlyVideo = on => { box.classList.toggle('vonly', on); box.classList.remove('novideo'); try { localStorage.setItem('ytOnly', on ? '1' : ''); } catch { } };
-  box = h('div', { class: 'yt leather-strip', role: 'region', 'aria-label': 'Reproductor de música' }, head, vid, ctrl, src, back);
+  // esquina para cambiar el tamaño (arrastrar); el tamaño se recuerda
+  const grip = h('div', { class: 'yt-grip', 'aria-label': 'Cambiar tamaño', title: 'Arrastra para cambiar el tamaño' });
+  box = h('div', { class: 'yt leather-strip', role: 'region', 'aria-label': 'Reproductor de música' }, head, vid, ctrl, src, back, grip);
+  try { const w = +localStorage.getItem('ytW'); if (w) box.style.width = Math.min(w, innerWidth - 8) + 'px'; } catch { }
+  let gs = null;
+  grip.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); gs = { x: e.clientX, w: box.offsetWidth, l: box.offsetLeft }; grip.setPointerCapture(e.pointerId); box.style.left = gs.l + 'px'; box.style.right = 'auto'; vid.style.pointerEvents = 'none'; });
+  grip.addEventListener('pointermove', e => { if (!gs) return; const w = Math.max(200, Math.min(innerWidth - 8, gs.w + e.clientX - gs.x)); box.style.width = w + 'px'; box.style.left = Math.max(4, Math.min(gs.l, innerWidth - 4 - w)) + 'px'; });
+  const gEnd = () => { if (!gs) return; gs = null; vid.style.pointerEvents = ''; try { localStorage.setItem('ytW', box.offsetWidth); } catch { } };
+  grip.addEventListener('pointerup', gEnd); grip.addEventListener('pointercancel', gEnd);
   // la pestañita: un toque vuelve a mostrar los botones; arrastrar mueve el video
   let bst = null;
   back.addEventListener('pointerdown', e => { bst = { x: e.clientX, y: e.clientY, l: box.offsetLeft, t: box.offsetTop, m: false }; back.setPointerCapture(e.pointerId); });
@@ -122,6 +130,12 @@ export function openMusic() {
   back.addEventListener('pointerup', () => { const moved = bst?.m; bst = null; if (!moved) onlyVideo(false); });
   document.body.append(box);
   try { if (localStorage.getItem('ytOnly') === '1') box.classList.add('vonly'); } catch { }
+  // los botones se esconden solos 4 s después de que empieza a sonar; al pasar el mouse (o tocar la notita) vuelven
+  let idleT = 0; const playing = () => player?.getPlayerState?.() === 1;
+  const arm = () => { clearTimeout(idleT); idleT = setTimeout(() => { if (box && playing() && !box.matches(':focus-within') && !box.classList.contains('mini')) box.classList.add('vonly'); }, 4000); };
+  box.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && box.classList.contains('vonly') && !localStorage.getItem('ytOnly')) box.classList.remove('vonly'); arm(); });
+  box.addEventListener('pointerdown', arm);
+  autoHide = arm;
   // arrastrar desde la cabecera
   let st = null;
   head.addEventListener('pointerdown', e => { if (e.target.closest('button') && !box.classList.contains('mini')) return; st = { x: e.clientX, y: e.clientY, l: box.offsetLeft, t: box.offsetTop, m: false }; head.setPointerCapture(e.pointerId); });
@@ -133,7 +147,7 @@ export function openMusic() {
   async function start(p) {
     try { await loadApi(); } catch (e) { return toast(e.message); }
     const opts = { playerVars: { playsinline: 1, rel: 0, modestbranding: 1, ...(p.list ? { listType: 'playlist', list: p.list } : {}) },
-      events: { onError: () => toast('Ese video no se puede reproducir aquí. Prueba otro enlace.', 3500), onStateChange: ev => { playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
+      events: { onError: () => toast('Ese video no se puede reproducir aquí. Prueba otro enlace.', 3500), onStateChange: ev => { if (ev.data === 1) autoHide?.(); playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
     if (player?.loadVideoById) { if (p.list) player.loadPlaylist({ list: p.list, listType: 'playlist', index: 0 }); else player.loadVideoById(p.v); return; }
     player = new YT.Player('yt-frame', { ...opts, videoId: p.v || undefined, height: '100%', width: '100%' });
     player.addEventListener?.('onReady', () => player.playVideo());
