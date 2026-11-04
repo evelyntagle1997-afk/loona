@@ -1651,3 +1651,29 @@ html.lite .ag-vp::before { animation: none; }
 .sum .sum-sec li, .nb-inner[data-tone] .sum .sum-sec li { color: #ECE8E5 !important; }
 .nb-inner .sum .sum-h, .nb-inner[data-tone] .sum .sum-h, .sum h4.sum-h { color: var(--neo) !important; -webkit-text-fill-color: var(--neo) !important; }
 .sum .sum-title { text-shadow: 0 0 4px var(--neo), 0 0 14px var(--neo), 0 0 30px color-mix(in srgb, var(--neo) 60%, transparent) !important; }
+/* v91 plantillas con estilo: borde ilustrado neón por tema, página negra uniforme */
+.sum { position: relative; overflow: hidden; }
+.sum-strip { position: absolute; top: 0; bottom: 0; width: 64px; background: var(--strip) center top / 100% auto repeat-y; mix-blend-mode: screen; opacity: .9; pointer-events: none; }
+.sum-strip.l { left: 0; } .sum-strip.r { right: 0; transform: scaleX(-1); }
+.sum.th-bio { --strip: url(../img/borde-bio.webp); } .sum.th-quim { --strip: url(../img/borde-quim.webp); } .sum.th-gen { --strip: url(../img/borde-gen.webp); }
+.sum.tpl-diario { padding-left: 84px; }
+.sum.tpl-poster { padding-left: 84px; padding-right: 84px; }
+.sum.tpl-poster .sum-title { font-size: calc(var(--tsz, 56px) * 1.15); }
+/* mapa conceptual: título al centro en un recuadro y bloques alrededor unidos con líneas */
+.sum.tpl-mapa { padding-left: 84px; }
+.sum.tpl-mapa .sum-title { display: table; margin: 4px auto 22px; padding: 10px 26px; border: 2px solid var(--neo); border-radius: 16px; box-shadow: 0 0 14px color-mix(in srgb, var(--neo) 45%, transparent), inset 0 0 12px color-mix(in srgb, var(--neo) 18%, transparent); }
+.sum.tpl-mapa .sum-title::before, .sum.tpl-mapa .sum-title::after { display: none; }
+.sum.tpl-mapa .sum-body { position: relative; }
+.sum.tpl-mapa .sum-body::before { content: ''; position: absolute; left: 50%; top: -22px; bottom: 0; border-left: 1.5px dashed color-mix(in srgb, var(--neo) 45%, transparent); }
+.sum.tpl-mapa .sum-sec { position: relative; background: #0b0a0b; }
+.sum.tpl-mapa .sum-sec:nth-child(odd)::after, .sum.tpl-mapa .sum-sec:nth-child(even)::after { content: ''; position: absolute; top: 18px; width: 14px; border-top: 1.5px dashed color-mix(in srgb, var(--neo) 55%, transparent); }
+.sum.tpl-mapa .sum-sec:nth-child(odd)::after { right: -15px; } .sum.tpl-mapa .sum-sec:nth-child(even)::after { left: -15px; }
+.sum.tpl-mapa .sum-sec.cat-definicion::after, .sum.tpl-mapa .sum-sec.cat-ideas::after, .sum.tpl-mapa .sum-sec.cat-datos::after { display: none; }
+/* ventana de transformar */
+.tf { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(300px, 1.4fr); gap: 16px; }
+.tf-side { display: grid; gap: 8px; align-content: start; } .tf-side .field { margin: 0; }
+.tf-text { min-height: 120px; resize: vertical; font: 15px/1.4 system-ui, sans-serif; }
+.tf-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.tf-prev { max-height: 60vh; overflow: auto; border-radius: 14px; background: #050505; padding: 8px; }
+.tf-mini { transform-origin: top left; zoom: .62; }
+@media (max-width: 720px) { .tf { grid-template-columns: 1fr; } .tf-mini { zoom: .5; } }

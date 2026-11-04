@@ -10,7 +10,7 @@ import { editImage } from './imageeditor.js';
 import { applyKbMode, sysKeyboard, miniKbOpen, cleanHandwriting } from './minikb.js';
 import { attachPartEditor, relink } from './tpledit.js';
 import { TEMPLATES, summaryToMindmap, summaryToTimeline, summaryToCards, summaryTo6 } from './templates.js';
-import { grouped, itemFromHl, condense, catLabel, CATS, quickQuestions, aiSummarize, aiOcr, tesseractOcr } from './summarizer.js';
+import { grouped, itemFromHl, condense, catLabel, CATS, quickQuestions, aiSummarize, aiOcr, tesseractOcr, classify } from './summarizer.js';
 
 export const PW = 800, PH = 1131;
 const PAPERS = [
@@ -1023,6 +1023,47 @@ export class Notebook {
       h('h3', {}, 'Loona: gótico y medicina'), grid(LOONA_STICKERS),
       h('h3', {}, 'Todos'), grid(Object.keys(STICKERS).filter(k => !LOONA_STICKERS.includes(k)))) });
   }
+  // Transformar tu texto en una página con estilo (eliges cómo se ve ANTES de ponerla)
+  transformDrawer() {
+    const selEl = this.sel?.el && this.sel.el.type === 'text' ? this.sel.el : null;
+    const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.innerText.trim(); };
+    const ta = h('textarea', { class: 'field tf-text', rows: 5, placeholder: 'Escribe o pega aquí lo que quieres transformar (o selecciona un texto del cuaderno antes de abrir esto).' }, selEl ? plain(selEl.html) : '');
+    const title = h('input', { class: 'field', placeholder: 'Título (opcional)' });
+    let tpl = 'diario', theme = themeOf(this.subject?.name), items = null, aiTitle = '';
+    const preview = h('div', { class: 'tf-prev' });
+    const local = () => (ta.value.split(/(?<=[.!?;])\s+|\n+/).map(x => x.trim()).filter(x => x.length > 3).slice(0, 18))
+      .map((t, i) => { const cat = classify(t, 2); return { hl: 'tf' + i, cat, level: 2, text: condense(t, cat, 22) }; });
+    const draw = () => {
+      const el = { type: 'summary', title: title.value.trim() || aiTitle || 'Mi tema', items: items || local(), layout: 'dos', tpl, theme };
+      const d = this.summaryDom(null, el); d.classList.add('tf-mini'); preview.replaceChildren(d);
+    };
+    const pick = (opts, cur, set) => h('div', { class: 'tf-opts' }, ...opts.map(([k, name]) => h('button', { class: 'chip' + (k === cur ? ' on' : ''), onclick: e => { set(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); draw(); } }, name)));
+    ta.addEventListener('input', () => { items = null; clearTimeout(this._tfT); this._tfT = setTimeout(draw, 300); });
+    title.addEventListener('input', draw);
+    const aiBtn = h('button', { class: 'btn', onclick: async () => {
+      const s = this.ctx.settings?.(); if (!s?.geminiKey) return toast('Para ordenar con IA pon tu clave de Gemini (botón IA del inicio).', 3500);
+      if (!ta.value.trim()) return ta.focus();
+      aiBtn.textContent = 'Ordenando…';
+      try { const r = await aiSummarize({ key: s.geminiKey, model: s.geminiModel, title: title.value.trim() || 'Tema', texts: [{ text: ta.value, level: 2 }], subject: this.subject?.name });
+        aiTitle = r.titulo || ''; items = (r.items || []).map((it, i) => ({ hl: 'tf' + i, cat: CATS.some(c => c.k === it.cat) ? it.cat : 'ideas', level: clamp(+it.level || 2, 1, 5), text: it.text }));
+        draw(); } catch (e) { toast(e.message, 4000); }
+      aiBtn.textContent = 'Ordenar con IA';
+    } }, 'Ordenar con IA');
+    draw();
+    modal({ title: 'Transformar con plantilla', wide: true, body: h('div', { class: 'tf' },
+      h('div', { class: 'tf-side' }, ta, title,
+        h('p', { class: 'opt-hint' }, 'Cómo se ve'), pick([['diario', 'Diario con borde'], ['mapa', 'Mapa conceptual'], ['poster', 'Póster']], tpl, v => tpl = v),
+        h('p', { class: 'opt-hint' }, 'Ilustraciones'), pick([['bio', 'Biología'], ['quim', 'Química'], ['gen', 'Luna y polillas']], theme, v => theme = v),
+        aiBtn),
+      h('div', { class: 'tf-right' }, h('p', { class: 'opt-hint' }, 'Vista previa (así quedará en tu hoja)'), preview)),
+      actions: [{ label: 'Cancelar' }, { label: 'Ponerlo en mi hoja', primary: true, onclick: () => {
+        if (!ta.value.trim()) { toast('Escribe algo primero'); return false; }
+        const pg = this.pages[this.curPageIndex()]; if (!pg) return;
+        this.addEl(pg, { type: 'summary', id: db.uid('sum_'), topic: db.uid('tf_'), title: title.value.trim() || aiTitle || 'Mi tema', items: items || local(), layout: 'dos', tpl, theme, x: 40, y: 50, w: PW - 80, h: 0, rot: 0 }, { select: true });
+        if (selEl) { pg.els = pg.els.filter(e => e !== selEl); this.renderEls(pg); this.commit(pg); }
+        toast('Listo: tu página con estilo');
+      } }] });
+  }
   templateDrawer() {
     const groups = {};
     for (const t of TEMPLATES) (groups[t.g] ||= []).push(t);
@@ -1178,10 +1219,13 @@ export class Notebook {
   }
 
   summaryDom(pg, el) {
-    const root = h('div', { class: 'sum lay-' + (el.layout || 'dos') });
+    const tpl = el.tpl || 'diario', theme = el.theme || themeOf(this.subject?.name);
+    const root = h('div', { class: 'sum lay-' + (el.layout || 'dos') + ' tpl-' + tpl + ' th-' + theme });
+    root.append(h('i', { class: 'sum-strip l', 'aria-hidden': 'true' }));
+    if (tpl === 'poster') root.append(h('i', { class: 'sum-strip r', 'aria-hidden': 'true' }));
     const sub = this.subject;
     root.style.setProperty('--sc', sub?.coverColor || '#7A2B3A');
-    root.style.setProperty('--neo', neonOf(sub?.name));   // brillo neón: plata por defecto; color solo si el tema lo pide
+    root.style.setProperty('--neo', el.theme ? NEON_TH[el.theme] : neonOf(sub?.name));   // brillo neón: plata por defecto; color solo si el tema lo pide
     const tf = el.titleFont || this.nb.titleFont || 'Grenze Gotisch'; ensureFont(tf);
     if (!el.cont && el.title) { const t = h('div', { class: 'sum-title', 'data-edit': 'title' }, el.title); t.style.fontFamily = `'${tf}', 'Pirata One', serif`; if (el.titleK) t.style.fontSize = `calc(var(--tsz, 56px) * ${el.titleK})`; root.append(t); }
     else if (el.cont && el.title) root.append(h('div', { class: 'sum-cont' }, el.title + ' (continúa)'));
@@ -1288,3 +1332,12 @@ export function neonOf(name = '') {
   if (/reda|lengua|liter|portug|espan/.test(n)) return '#E07A93';
   return '#E9E5E2';
 }
+
+// tema de ilustraciones del borde según la materia
+export function themeOf(name = '') {
+  const n = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/bio|anat|fisiolog|medic|salud/.test(n)) return 'bio';
+  if (/quim/.test(n)) return 'quim';
+  return 'gen';
+}
+const NEON_TH = { bio: '#7CF5B4', quim: '#7FD4FF', gen: '#E9E5E2' };
