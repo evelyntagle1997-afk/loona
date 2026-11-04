@@ -1503,3 +1503,41 @@ html.lite .ag-vp::before { animation: none; }
 .ag-note { justify-content: flex-start !important; padding: 5.4cqw 1.8cqw 1.6cqw !important; gap: .45cqw !important; }
 .ag-note .ag-hi { font-size: 1.75cqw !important; line-height: 1.05; }
 .ag-note .ag-xo { font-size: 1.05cqw !important; }
+/* v74 la nota del clip: todo el texto queda dentro de la tarjeta, en cualquier pantalla */
+.ag-note { justify-content: space-between !important; padding: 3.1cqw 1.6cqw 1.3cqw !important; gap: .25cqw !important; overflow: hidden; box-sizing: border-box; }
+.ag-note .ag-hi { font-size: 1.55cqw !important; line-height: 1.05; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ag-note .ag-date { font-size: .8cqw !important; }
+.ag-note .ag-xo { font-size: .95cqw !important; line-height: 1.25; margin-top: 0 !important; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ag-note .ag-sign { font-size: 1.05cqw !important; margin-top: 0 !important; }
+/* v74 separadores de índice de cuero (asoman por el borde derecho del papel vegetal) */
+.ag-tabs { position: absolute; left: 86.6%; top: 8.4%; width: 4.4%; height: 80%; z-index: 3; pointer-events: none; }
+.ag-tabl { position: absolute; left: 0; width: 100%; height: 11.5%; border: 0; padding: 0; pointer-events: auto; cursor: pointer;
+  border-radius: 0 .9cqw .9cqw 0; background: linear-gradient(90deg, rgba(0,0,0,.55), transparent 28%), url(../img/cuero.jpg) center / 240px, #1a1819;
+  box-shadow: inset 0 0 0 .12cqw #0b0a0b, inset 0 .15cqw 0 rgba(255,255,255,.08), .2cqw .3cqw .5cqw rgba(0,0,0,.55); transform: translateX(-.6cqw); transition: transform .3s var(--ease-out), filter .3s; }
+.ag-tabl::before { content: ''; position: absolute; inset: .45cqw .45cqw .45cqw .25cqw; border: .1cqw dashed rgba(200,195,198,.35); border-radius: 0 .6cqw .6cqw 0; }
+.ag-tabl span { position: absolute; inset: 0; display: grid; place-items: center; writing-mode: vertical-rl; transform: rotate(180deg); font: 600 .85cqw/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #cfcbcd; text-shadow: 0 .1cqw 0 #000; }
+.ag-tabl.on { transform: translateX(0); filter: brightness(1.25); }
+.ag-tabl.on span { color: #fff; }
+@media (hover: hover) { .ag-tabl:not(.on):hover { transform: translateX(-.2cqw); } }
+.ag-sec[hidden] { display: none !important; }
+.ag-empty, .ag-mem { color: #fff; font: 1.1cqw/1.35 'Kalam', cursive; text-shadow: 0 1px 4px rgba(0,0,0,.55); white-space: pre-line; margin: .4cqw 0 .8cqw; }
+.agenda.sec-other .ag-portada { opacity: .25; transition: opacity .4s; }
+/* hoja que pasa (es la misma foto del papel vegetal, girando sobre las argollas) */
+.ag-flip { position: absolute; left: 49.4%; top: 9.2%; width: 38.8%; height: 80.6%; z-index: 7; transform-origin: 0 50%; transform-style: preserve-3d; pointer-events: none; visibility: hidden; }
+.ag-flip > div { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 0 .6cqw .6cqw 0; }
+.agf-front { background: url(../img/agenda.webp) 81.6% 46% / 257.7% auto; box-shadow: .4cqw .4cqw 1.2cqw rgba(0,0,0,.35); }
+.agf-back { transform: rotateY(180deg); background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(255,255,255,.08)), url(../img/agenda.webp) 81.6% 46% / 257.7% auto; filter: brightness(.8) blur(.3px); border-radius: .6cqw 0 0 .6cqw; }
+.ag-flip.turn { visibility: visible; animation: hoja .9s cubic-bezier(.45,.05,.3,1) both; }
+@keyframes hoja { 0% { transform: rotateY(0); } 100% { transform: rotateY(-176deg); opacity: .0; } 70% { opacity: 1; } }
+/* el contenido entra después de pasar la primera hoja */
+.agenda .ag-page, .agenda .ag-portada, .agenda .ag-deco, .agenda .ag-note, .agenda .ag-card { transition: opacity .5s ease, transform .5s var(--ease-out); }
+.agenda:not(.shown) .ag-page, .agenda:not(.shown) .ag-portada { opacity: 0; }
+.agenda:not(.shown) .ag-deco, .agenda:not(.shown) .ag-note, .agenda:not(.shown) .ag-card { opacity: 0; translate: 0 .6cqw; }
+.agenda.shown .ag-deco { transition-delay: .15s; } .agenda.shown .ag-corazon { transition-delay: .25s; } .agenda.shown .ag-sello { transition-delay: .35s; }
+/* el broche se suelta antes de abrir */
+.ag-cover.unsnap { visibility: visible; transform: rotateY(0); }
+.ag-cover.unsnap .agc-strap { animation: broche .38s cubic-bezier(.3,.7,.4,1) both; }
+@keyframes broche { 0% { transform: none; } 40% { transform: translateX(.4cqw) rotate(-4deg); } 100% { transform: translateX(3.2cqw) rotate(-14deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ag-flip { display: none; } .agenda:not(.shown) * { opacity: 1 !important; translate: none !important; } }
+/* v74 fondo liso (sin el papel tapiz de dibujos) */
+.home.ag-home { background: radial-gradient(70% 60% at 50% 45%, transparent 40%, rgba(0,0,0,.65) 100%), radial-gradient(120% 100% at 50% 45%, #1f1d1e, #0e0d0e) !important; }

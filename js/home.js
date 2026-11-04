@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 73;
+export const APP_VERSION = 74;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -44,6 +44,33 @@ export async function renderHome(app, go0) {
     ...subjects.map(s => { const n = nbs.filter(x => x.subject === s.id).length, p = pdfs.filter(x => x.subject === s.id).length;
       return h('button', { class: 'ag-sub', onclick: () => go(`#/m/${s.id}`) }, h('span', {}, s.name), h('small', {}, `${n} cuad. · ${p} PDF`)); }),
     h('button', { class: 'ag-sub ag-new', onclick: () => newSubject(go) }, h('span', { html: icon('plus', 16) }), h('span', {}, 'Nueva materia')));
+  // secciones del índice (se cambian pasando la hoja)
+  const agendaSec = h('div', { class: 'ag-sec', hidden: true, 'data-k': 'agenda' });
+  const loonaSec = h('div', { class: 'ag-sec', hidden: true, 'data-k': 'loona' });
+  idx.dataset.k = 'materias'; idx.classList.add('ag-sec');
+  const fillAgenda = async () => {
+    const A = await import('./agenda.js'); const ev = (await A.events(7)).slice(0, 8);
+    agendaSec.replaceChildren(h('p', { class: 'ag-idx-h' }, 'Agenda'),
+      ...(ev.length ? ev.map(e => { const d = new Date(e.start_time); return h('button', { class: 'ag-sub', onclick: () => A.openAgendaView() }, h('span', {}, e.title), h('small', {}, d.toLocaleDateString('es', { weekday: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }))); })
+        : [h('p', { class: 'ag-empty' }, 'Nada agendado. Dile a Loona: «Luny, agenda…»')]),
+      h('button', { class: 'ag-sub ag-new', onclick: () => A.openAgendaView() }, h('span', { html: icon('plus', 16) }), h('span', {}, 'Abrir mi agenda')));
+  };
+  const fillLoona = async () => {
+    const L = await import('./loona.js'); const m = await L.memoryText();
+    loonaSec.replaceChildren(h('p', { class: 'ag-idx-h' }, 'Loona'),
+      h('p', { class: 'ag-mem' }, m ? m.split('\n').filter(x => x.trim()).slice(0, 6).join('\n') : 'Todavía no me acuerdo de nada. Háblame más, genio.'),
+      h('button', { class: 'ag-sub ag-new', onclick: () => L.callLoona() }, h('span', {}, 'Hablar con Loona')));
+  };
+  // pasar la hoja: una página de papel vegetal gira sobre las argollas y aparece la otra sección
+  let curTab = 'materias', flipping = false;
+  const flipTo = async k => {
+    if (k === curTab || flipping) return; flipping = true;
+    if (k === 'agenda') await fillAgenda(); if (k === 'loona') await fillLoona();
+    scene.querySelectorAll('.ag-tabl').forEach(t => t.classList.toggle('on', t.dataset.k === k));
+    const f = scene.querySelector('.ag-flip'); f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn');
+    setTimeout(() => { scene.querySelectorAll('.ag-sec').forEach(x => x.hidden = x.dataset.k !== k); scene.classList.toggle('sec-other', k !== 'materias'); curTab = k; }, 380);
+    setTimeout(() => { f.classList.remove('turn'); flipping = false; }, 900);
+  };
   const pocket = h('div', { class: 'ag-z ag-pocket', style: { left: '8.6%', top: '56.8%', width: '20.8%', height: '28.6%' }, role: 'button', tabindex: 0, 'aria-label': 'Tu foto en el bolsillo' });
   initPocket(pocket);
 
@@ -59,9 +86,9 @@ export async function renderHome(app, go0) {
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    deco('polaroid', 32.6, 36.6, 6.8, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
-    deco('corazon', 29.6, 54.5, 5.8, 'rotate(-5deg)', 'Dato de medicina para el ENEM', medFact),
-    deco('sello', 31.6, 70.5, 4.2, 'rotate(10deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
+    deco('polaroid', 31.6, 41.6, 7.6, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
+    deco('corazon', 29.4, 55.5, 6.8, 'rotate(-6deg)', 'Dato de medicina para el ENEM', medFact),
+    deco('sello', 29.8, 70.5, 6.4, 'rotate(12deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     portada(),
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
     hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
@@ -71,7 +98,10 @@ export async function renderHome(app, go0) {
     hot('ag-rings', 46.6, 9, 5.4, 82, 'Argollas: ajustes de la IA', () => settings('ia')),
     hot('ag-tab', 88, 27, 2.6, 12.5, 'Pestaña: mi agenda', () => import('./agenda.js').then(m => m.openAgendaView())),
     hot('ag-strap', 91, 40.5, 7.2, 16, 'Broche: cerrar o abrir la agenda', () => toggleAgenda()),
-    P('ag-page', 52, 12, 35, 75, idx),
+    P('ag-page', 52, 12, 35, 75, idx, agendaSec, loonaSec),
+    h('div', { class: 'ag-tabs', role: 'tablist', 'aria-label': 'Separadores' }, ...TABS.map(([k, label], i) =>
+      h('button', { class: 'ag-tabl' + (i === 0 ? ' on' : ''), role: 'tab', 'data-k': k, style: { top: (16 + i * 13) + '%' }, onclick: e => { e.stopPropagation(); flipTo(k); } }, h('span', {}, label)))),
+    h('div', { class: 'ag-flip', 'aria-hidden': 'true' }, h('div', { class: 'agf-front' }), h('div', { class: 'agf-back' })),
     h('span', { class: 'ag-word', 'aria-hidden': 'true' }, 'Loona'),
     h('span', { class: 'ag-light', 'aria-hidden': 'true' }),
     h('span', { class: 'ag-grain', 'aria-hidden': 'true' }),
@@ -281,16 +311,29 @@ export function pomoTick() {
   pomoT = setTimeout(pomoTick, 1000);
 }
 
+const TABS = [['materias', 'Materias'], ['agenda', 'Agenda'], ['loona', 'Loona']];
 // ---------- abrir y cerrar la agenda ----------
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function coverEl() { return document.querySelector('.ag-cover'); }
 export function openAgenda() {
   const c = coverEl(); if (!c) return Promise.resolve();
-  c.classList.remove('closing', 'shut'); c.classList.add('opening');
-  return new Promise(r => setTimeout(() => { c.classList.remove('opening'); c.classList.add('open'); r(); }, reduce() ? 0 : 1150));
+  const sc = c.closest('.agenda');
+  if (reduce()) { c.classList.remove('closing', 'shut'); c.classList.add('open'); sc?.classList.add('shown'); return Promise.resolve(); }
+  sc?.classList.remove('shown');
+  c.classList.add('unsnap');   // 1) se suelta el broche
+  return new Promise(r => setTimeout(() => {
+    c.classList.remove('closing', 'shut', 'unsnap'); c.classList.add('opening');   // 2) gira la tapa
+    setTimeout(() => {
+      c.classList.remove('opening'); c.classList.add('open');
+      const f = sc?.querySelector('.ag-flip'); if (f) { f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn'); }   // 3) pasa la primera hoja
+      setTimeout(() => sc?.classList.add('shown'), 420);   // 4) entra el contenido
+      setTimeout(() => { f?.classList.remove('turn'); r(); }, 950);
+    }, 1100);
+  }, 380));
 }
 export function closeAgenda() {
   const c = coverEl(); if (!c || reduce()) return Promise.resolve();
+  c.closest('.agenda')?.classList.remove('shown');
   c.classList.remove('open', 'opening'); c.classList.add('closing');
   return new Promise(r => setTimeout(() => { c.classList.remove('closing'); c.classList.add('shut'); r(); }, 750));
 }
