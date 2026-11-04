@@ -1324,7 +1324,7 @@ function fmtItem(t) {
 export { LEVELS, catLabel, debounce };
 
 // color del brillo neón del resumen según la materia (la base siempre es negra; plata si no hace falta otro color)
-export function neonOf() { return '#FF4655'; }   // paleta: negro, blanco, plomo, plata y rojo neón
+export function neonOf() { return '#E9E9EC'; }   // paleta: negro, blanco, plomo, plata y rojo neón
 
 // tema de ilustraciones del borde según la materia
 export function themeOf(name = '') {
@@ -1333,4 +1333,4 @@ export function themeOf(name = '') {
   if (/quim/.test(n)) return 'quim';
   return 'gen';
 }
-const NEON_TH = { bio: '#FF4655', quim: '#FF4655', gen: '#FF4655' };
+const NEON_TH = { bio: '#E9E9EC', quim: '#E9E9EC', gen: '#E9E9EC' };
