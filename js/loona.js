@@ -6,7 +6,7 @@ const MODELS = s => [...new Set([s.geminiModel || 'gemini-3.6-flash', 'gemini-fl
 const API = (m, key, verb = 'generateContent') => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:${verb}?key=${encodeURIComponent(key)}`;
 
 // texto simple con Gemini (con modelos de respaldo)
-export async function aiText(s, prompt, { history = [], system } = {}) {
+export async function aiText(s, prompt, { history = [], system, parts } = {}) {
   if (!s.geminiKey) throw new Error('Pon tu clave de Gemini en el botón IA del inicio.');
   let last;
   for (const m of MODELS(s)) {
@@ -14,10 +14,11 @@ export async function aiText(s, prompt, { history = [], system } = {}) {
     try {
       r = await fetch(API(m, s.geminiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-        contents: [...history, { role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: .8 } }) });
+        contents: [...history, { role: 'user', parts: parts || [{ text: prompt }] }], generationConfig: { temperature: .8 } }) });
     } catch { throw new Error('Sin conexión a internet.'); }
     if (r.status === 404) { last = new Error('Modelo no disponible'); continue; }
     if (r.status === 429) throw new Error('Gemini llegó a su límite gratuito por ahora.');
+    if (r.status === 400 || r.status === 401 || r.status === 403) { const t = await r.text(); if (/API key|API_KEY|PERMISSION|UNAUTH/i.test(t)) throw new Error('Tu clave de Gemini no funciona. Revísala en el botón IA del inicio.'); last = new Error('Gemini respondió con error ' + r.status); continue; }
     if (!r.ok) { last = new Error('Gemini respondió con error ' + r.status); continue; }
     const j = await r.json();
     return j.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim() || '';
@@ -117,6 +118,52 @@ export async function talk(text) {
   } catch (e) { return speak(e.message); }
 }
 
+// Conversar mandando tu voz directo a Gemini (cuando el dictado del navegador no funciona)
+async function talkAudio(blob, heard) {
+  const s = await db.settings();
+  if (!s.geminiKey) { heard.textContent = ''; return speak('Para escucharte necesito tu clave de Gemini. Ponla en el botón IA del inicio.'); }
+  heard.textContent = 'Pensando…';
+  const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+  try {
+    const out = await aiText(s, '', { history: chat.slice(-10), system: PERSONA, parts: [
+      { inline_data: { mime_type: (blob.type || 'audio/webm').split(';')[0], data: b64 } },
+      { text: 'Eso es un audio de Eve hablándote. Responde exactamente en este formato:\nDIJO: (lo que dijo, en una línea)\nLOONA: (tu respuesta)' }] });
+    const dijo = (out.match(/DIJO:\s*(.*)/i) || [])[1]?.trim() || '';
+    const ans = ((out.match(/LOONA:\s*([\s\S]*)/i) || [])[1] || out).trim();
+    heard.textContent = dijo ? '«' + dijo + '»' : '';
+    chat.push({ role: 'user', parts: [{ text: dijo || '(audio)' }] }, { role: 'model', parts: [{ text: ans }] });
+    return speak(ans || 'Mm. No te entendí. ¿Otra vez?');
+  } catch (e) { heard.textContent = ''; return speak(e.message); }
+}
+// graba hasta que te quedes callada 1,5 s (o toques otra vez el botón)
+let recNow = null;
+async function recordAndTalk(btn, heard) {
+  if (recNow) return recNow.stop();
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+  catch { return toast('Permite el micrófono para hablar con Loona (candado junto a la dirección).', 4000); }
+  const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find(t => window.MediaRecorder?.isTypeSupported?.(t)) || '';
+  const mr = new MediaRecorder(stream, mt ? { mimeType: mt, audioBitsPerSecond: 24000 } : {});
+  const chunks = []; mr.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const ac = new (window.AudioContext || window.webkitAudioContext)(); const an = ac.createAnalyser(); an.fftSize = 1024;
+  ac.createMediaStreamSource(stream).connect(an); const buf = new Float32Array(an.fftSize);
+  let spoke = false, quiet = 0; const t0 = Date.now();
+  const loop = () => {
+    if (mr.state !== 'recording') return;
+    an.getFloatTimeDomainData(buf); let sum = 0; for (const v of buf) sum += v * v; const rms = Math.sqrt(sum / buf.length);
+    if (rms > .02) { spoke = true; quiet = 0; } else quiet += 120;
+    if ((spoke && quiet > 1500) || Date.now() - t0 > 30000 || (!spoke && Date.now() - t0 > 8000)) return mr.stop();
+    setTimeout(loop, 120);
+  };
+  recNow = mr; btn.classList.add('live'); heard.textContent = 'Te escucho… (toca otra vez para terminar)';
+  mr.onstop = () => {
+    recNow = null; btn.classList.remove('live'); stream.getTracks().forEach(t => t.stop()); ac.close();
+    if (!spoke) { heard.textContent = ''; return toast('No escuché nada. Acércate al micrófono y vuelve a intentar.', 3000); }
+    talkAudio(new Blob(chunks, { type: mr.mimeType || mt || 'audio/webm' }), heard);
+  };
+  mr.start(250); loop();
+}
+
 // ---------- botón flotante (luna) con micrófono y texto ----------
 let panel = null;
 export function mountLoona() {
@@ -148,13 +195,26 @@ function toggle() {
     heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel);
   document.body.append(panel);
 }
-function listen(btn, heard) {
+async function listen(btn, heard) {
+  // Con clave de Gemini: grabo tu voz y Gemini la entiende (más fiable que el dictado del navegador)
+  if (recNow || (await db.settings()).geminiKey) return recordAndTalk(btn, heard);
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return speak('Este navegador no me deja escucharte. Escríbeme; en Chrome o Edge sí te escucho.');
+  let broken = false; try { broken = localStorage.getItem('srOff') === '1'; } catch { }
+  // Si el dictado del navegador no existe o falla, grabo tu voz y se la mando a Gemini
+  if (!SR || broken || recNow) return recordAndTalk(btn, heard);
+  let got = false;
   try {
-    const r = new SR(); r.lang = 'es-ES'; r.interimResults = true; btn.classList.add('live'); heard.textContent = 'Te escucho…';
-    r.onresult = ev => { const t = [...ev.results].map(x => x[0].transcript).join(''); heard.textContent = '«' + t + '»'; if (ev.results[ev.results.length - 1].isFinal) talk(t); };
-    r.onerror = e => { heard.textContent = ''; toast(e.error === 'not-allowed' ? 'Permite el micrófono para hablar con Loona.' : 'No te escuché bien. Intenta otra vez.'); };
-    r.onend = () => btn.classList.remove('live'); r.start();
-  } catch { btn.classList.remove('live'); }
+    const r = new SR(); r.lang = 'es-419'; r.interimResults = true; btn.classList.add('live'); heard.textContent = 'Te escucho…';
+    r.onresult = ev => { got = true; const t = [...ev.results].map(x => x[0].transcript).join(''); heard.textContent = '«' + t + '»'; if (ev.results[ev.results.length - 1].isFinal) { heard.textContent = '«' + t + '» · Pensando…'; talk(t).then(() => heard.textContent = '«' + t + '»'); } };
+    r.onerror = e => {
+      btn.classList.remove('live');
+      if (e.error === 'no-speech') { heard.textContent = ''; return toast('No escuché nada. Habla apenas aparezca «Te escucho».', 3000); }
+      if (e.error === 'not-allowed' && !navigator.mediaDevices) { heard.textContent = ''; return toast('Permite el micrófono para hablar con Loona.'); }
+      // network / service-not-allowed / language-not-supported / aborted: cambio a grabar con Gemini
+      try { localStorage.setItem('srOff', '1'); } catch { }
+      recordAndTalk(btn, heard);
+    };
+    r.onend = () => { if (!recNow) btn.classList.remove('live'); };
+    r.start();
+  } catch { btn.classList.remove('live'); recordAndTalk(btn, heard); }
 }
