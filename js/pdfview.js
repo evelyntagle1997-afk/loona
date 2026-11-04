@@ -261,9 +261,11 @@ export class PdfView {
   currentPage() { return this._hold || this.curPage(); }
   goto(n) { const p = this.pages[n - 1]; if (p) this.scroller.scrollTop += p.el.getBoundingClientRect().top - this.scroller.getBoundingClientRect().top - 8; }
 
-  baseScale(p) {
-    const w = (this.scroller.clientWidth - 24) / p.w;
-    return this.fit === 'hoja' ? Math.min(w, (this.scroller.clientHeight - 24) / p.h) : w;
+  baseScale(p, W, H) {
+    // W/H se miden una sola vez por relayout: medir dentro del bucle forzaba un recálculo por página (lento en libros grandes)
+    W ??= this.scroller.clientWidth; H ??= this.scroller.clientHeight;
+    const w = (W - 24) / p.w;
+    return this.fit === 'hoja' ? Math.min(w, (H - 24) / p.h) : w;
   }
   setLocked(v) {
     this.locked = v;
@@ -285,8 +287,9 @@ export class PdfView {
   }
   relayout() {
     if (!this.pages.length) return;
+    const W = this.scroller.clientWidth, H = this.scroller.clientHeight;
     for (const p of this.pages) {
-      const s = this.baseScale(p) * this.zoom;
+      const s = this.baseScale(p, W, H) * this.zoom;
       p.scale = s;
       p.el.style.width = p.w * s + 'px';
       p.el.style.height = p.h * s + 'px';
@@ -295,8 +298,10 @@ export class PdfView {
       if (p.rendered && Math.abs(p.rendered - s) > 0.01) { p.rendered = 0; p.needs = true; }
     }
     clearTimeout(this._rl);
-    this._rl = setTimeout(() => this.pages.filter(p => p.needs && this.isNear(p)).forEach(p => this.renderPage(p)), 120);
+    this._rl = setTimeout(() => this.nearPages().filter(p => p.needs).forEach(p => this.renderPage(p)), 120);
   }
+  // solo revisa las páginas alrededor de la actual (no las 500 del libro)
+  nearPages(r = 4) { const c = this.curPage() - 1; return this.pages.slice(Math.max(0, c - r), c + r + 1).filter(p => this.isNear(p)); }
   isNear(p) {
     const r = p.el.getBoundingClientRect(), s = this.scroller.getBoundingClientRect();
     return r.bottom > s.top - 600 && r.top < s.bottom + 600;
@@ -350,7 +355,7 @@ export class PdfView {
       this.busy--;
       this.queue?.clear();
       const cur = this.currentPage();
-      this.pages.filter(q => !q.failed && !q.rendering && !(q.rendered && Math.abs(q.rendered - q.scale) < .01) && this.isNear(q))
+      this.nearPages().filter(q => !q.failed && !q.rendering && !(q.rendered && Math.abs(q.rendered - q.scale) < .01))
         .sort((a, b) => Math.abs(a.n - cur) - Math.abs(b.n - cur)).slice(0, 3).forEach(q => this.renderPage(q));
     }
   }

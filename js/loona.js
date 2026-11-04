@@ -2,7 +2,7 @@
 import * as db from './db.js';
 import { h, icon, toast } from './ui.js';
 
-const MODELS = s => [...new Set([s.geminiModel || 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'])];
+const MODELS = s => [...new Set([s.geminiModel || 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'])];
 const API = (m, key, verb = 'generateContent') => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:${verb}?key=${encodeURIComponent(key)}`;
 
 // texto simple con Gemini (con modelos de respaldo)

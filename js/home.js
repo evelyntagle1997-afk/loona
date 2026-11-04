@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 40;
+export const APP_VERSION = 41;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -224,7 +224,7 @@ export async function settings(tab = 'nube') {
       status,
     );
   } else if (tab === 'ia') {
-    const key = h('input', { class: 'field', type: 'password', value: st.geminiKey || '', placeholder: 'AIza…' });
+    const key = h('input', { class: 'field', type: 'password', value: st.geminiKey || '', placeholder: 'Pega tu clave de Gemini' });
     const model = h('input', { class: 'field', value: st.geminiModel || 'gemini-3.6-flash' });
     const auto = h('input', { type: 'checkbox' }); auto.checked = st.aiAuto ?? true;
     body.append(
