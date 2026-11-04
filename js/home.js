@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 48;
+export const APP_VERSION = 49;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -57,6 +57,9 @@ export async function renderHome(app, go) {
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
+    deco('polaroid', 30.2, 40, 9.2, 'rotate(7deg)', 'Una frase de Loona', () => import('./loona.js').then(L => L.speak(QUOTES[Math.floor(Math.random() * QUOTES.length)]))),
+    deco('corazon', 54.5, 58, 10, 'rotate(-5deg)', 'Dato de medicina para el ENEM', medFact),
+    deco('sello', 65.5, 71, 8.6, 'rotate(8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
     hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
     hot('ag-key', 39.6, 61.5, 4.2, 12, 'Llave: Loona te escucha siempre (manos libres)', () => import('./handsfree.js').then(m => m.toggle())),
@@ -148,6 +151,18 @@ function initPocket(pocket) {
   draw();
 }
 
+// recuerdos pegados en la agenda (fotos reales); cada uno hace algo
+function deco(name, l, t, w, rot, label, fn) {
+  return h('button', { class: 'ag-z ag-deco ag-hot ag-' + name, style: { left: l + '%', top: t + '%', width: w + '%', transform: rot }, 'aria-label': label, title: label, 'data-tip': label.split(':').pop().trim(), onclick: e => { e.stopPropagation(); fn(); } },
+    h('img', { src: 'img/deco-' + name + '.webp', alt: '', draggable: false, loading: 'lazy' }));
+}
+const QUOTES = ['Un capítulo a la vez, Eve. Nadie aprende Medicina en un día.', 'La que estudia cansada también cuenta. Pero duerme, eh.', 'Hoy difícil, mañana UNILA. XOXO.', 'Tú contra el ENEM. Yo apuesto por ti. No se lo digas a nadie.', 'Si fuera fácil, cualquiera sería médica.'];
+const MED = ['El corazón late unas 100 000 veces al día.', 'La mitocondria produce ATP por respiración celular: cae mucho en el ENEM.', 'Los glóbulos rojos viven unos 120 días y no tienen núcleo.', 'El ADN se duplica de forma semiconservativa: cada copia tiene una hebra vieja y una nueva.', 'Las vacunas generan memoria inmunológica con linfocitos B y T.', 'La insulina baja la glucosa en sangre; el glucagón la sube.'];
+async function medFact() {
+  const L = await import('./loona.js'); const s = await db.settings();
+  if (s.geminiKey) { try { const t = await L.aiText(s, 'Dame UN dato corto de biología o medicina que suela caer en el ENEM, en una sola frase, con tu actitud de Loona.'); if (t) return L.speak(t); } catch { } }
+  L.speak(MED[Math.floor(Math.random() * MED.length)]);
+}
 // zona tocable sobre un objeto de la foto (se ilumina al pasar el mouse y muestra qué hace)
 function hot(cls, l, t, w, hh, label, fn) {
   return h('button', { class: 'ag-z ag-hot ' + cls, style: { left: l + '%', top: t + '%', width: w + '%', height: hh + '%' }, 'aria-label': label, title: label, 'data-tip': label.split(':')[1]?.trim() || label, onclick: e => { e.stopPropagation(); fn(e); } });
