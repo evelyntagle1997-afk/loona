@@ -1459,3 +1459,8 @@ html.lite .ag-vp::before { animation: none; }
 .ag-note { background: #070607 !important; position: absolute; }
 .ag-note::before { content: ''; position: absolute; inset: 0; background: url(../img/marco.webp) center / 100% 100% no-repeat; opacity: .45; pointer-events: none; border-radius: inherit; }
 .ag-note > * { position: relative; }
+/* v66 realismo: sombras de contacto suaves y luz coherente (arriba a la izquierda) */
+.ag-deco { filter: drop-shadow(.25cqw .45cqw .35cqw rgba(0,0,0,.55)) drop-shadow(0 .08cqw .08cqw rgba(0,0,0,.6)) !important; }
+.ag-deco img { filter: contrast(1.04) brightness(.97); }
+.ag-note { box-shadow: .25cqw .5cqw .8cqw rgba(0,0,0,.55), 0 .08cqw .1cqw rgba(0,0,0,.6) !important; }
+.ag-card { filter: brightness(.96); }

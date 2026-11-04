@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 65;
+export const APP_VERSION = 66;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -59,8 +59,8 @@ export async function renderHome(app, go0) {
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    deco('polaroid', 30, 38.5, 9.6, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
-    deco('corazon', 30.4, 57.5, 7.4, 'rotate(-5deg)', 'Dato de medicina para el ENEM', medFact),
+    deco('polaroid', 28.2, 35.5, 8.8, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
+    deco('corazon', 29.2, 56.5, 6.6, 'rotate(-5deg)', 'Dato de medicina para el ENEM', medFact),
     deco('sello', 24.4, 41, 5.8, 'rotate(8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     portada(),
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
