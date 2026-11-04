@@ -251,6 +251,13 @@ export function mountLoona() {
 }
 // abrir el panel y empezar a conversar por voz de una vez (lo usa el cristal ámbar)
 export { talkAudio };
+// fila "Manos libres" en el panel
+function hfRow() {
+  const b = h('button', { class: 'chip', onclick: async () => { const m = await import('./handsfree.js'); await m.toggle(); paint(m); } }, 'Manos libres');
+  const paint = m => { b.classList.toggle('on', m.isOn()); b.textContent = m.isOn() ? 'Manos libres: sí (di «Loona…»)' : 'Manos libres: no'; };
+  import('./handsfree.js').then(paint);
+  return h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Sin tocar nada:'), b);
+}
 export function callLoona() {
   if (!panel) toggle();
   const b = panel?.querySelector('.btn.primary'); if (b && !b.classList.contains('oncall')) b.click();
@@ -267,7 +274,7 @@ function toggle() {
     h('button', { class: 'chip' + (voiceMode() === k ? ' on' : ''), onclick: e => { setVoiceMode(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n)));
   panel = h('div', { class: 'loona-panel leather-panel', role: 'dialog', 'aria-label': 'Loona' },
     h('div', { class: 'loona-head' }, h('b', {}, 'Loona'), h('button', { class: 'icbtn', 'aria-label': 'Cerrar', html: icon('close', 18), onclick: toggle })),
-    heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel);
+    heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel, hfRow());
   document.body.append(panel);
 }
 async function listen(btn, heard) {

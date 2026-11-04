@@ -23,7 +23,7 @@ export function openRecorder({ subject, nb, notebook }) {
       const rec = new MediaRecorder(stream, { mimeType: mime || undefined, audioBitsPerSecond: 24000 });
       active = { rec, stream, chunks: [], t0: Date.now(), paused: 0, pauseAt: 0, title: title.value, topic: topic.value, subject, nb, notebook };
       rec.ondataavailable = e => e.data.size && active?.chunks.push(e.data);
-      rec.start(4000);
+      rec.start(4000); document.body.classList.add('rec-on');
       autoPause(active, () => { status.replaceChildren(h('span', { class: 'rec-dot' }), 'Grabando…'); pauseBtn.textContent = 'Pausar'; },
                         () => { status.textContent = 'En pausa automática: silencio. Sigue sola cuando vuelva a escucharse la voz.'; });
       try { active.wake = await navigator.wakeLock?.request('screen'); } catch { }
@@ -40,7 +40,7 @@ export function openRecorder({ subject, nb, notebook }) {
     const a = active; active = null;
     a.title = title.value.trim() || a.title; a.topic = topic.value.trim();
     if (a.rec.state === 'paused') doResume(a);
-    await new Promise(r => { a.rec.onstop = r; a.rec.stop(); });
+    await new Promise(r => { a.rec.onstop = r; a.rec.stop(); }); document.body.classList.remove('rec-on');
     a.vad?.stop();
     a.stream.getTracks().forEach(t => t.stop()); a.wake?.release?.().catch(() => { });
     const blob = new Blob(a.chunks, { type: a.rec.mimeType || 'audio/webm' });

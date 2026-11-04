@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 47;
+export const APP_VERSION = 48;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -59,8 +59,8 @@ export async function renderHome(app, go) {
     pocket,
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
     hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
-    hot('ag-key', 39.6, 61.5, 4.2, 12, 'Llave: tu cuenta en la nube', () => settings('nube')),
-    hot('ag-clip', 24.8, 0.5, 6.8, 16, 'Clip: copia de seguridad', () => settings('copia')),
+    hot('ag-key', 39.6, 61.5, 4.2, 12, 'Llave: Loona te escucha siempre (manos libres)', () => import('./handsfree.js').then(m => m.toggle())),
+    hot('ag-clip', 24.8, 0.5, 6.8, 16, 'Clip: tu cuenta en la nube y copia', () => settings('nube')),
     hot('ag-rings', 46.6, 9, 5.4, 82, 'Argollas: ajustes de la IA', () => settings('ia')),
     hot('ag-tab', 88, 27, 2.6, 12.5, 'Pestaña: letras y fuentes', () => settings('fuentes')),
     hot('ag-strap', 91, 40.5, 7.2, 16, 'Broche: pantalla completa', () => toggleFull()),

@@ -1366,3 +1366,12 @@ button.ag-z { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .yt.vonly .yt-grip { opacity: .35; } .yt.vonly:hover .yt-grip { opacity: .9; }
 @media (hover: none) { .yt-grip { width: 34px; height: 34px; opacity: .8; } }
 .yt.mini .yt-grip { display: none; }
+/* v48 manos libres: la luna brilla en ámbar mientras Loona escucha */
+.loona-fab.hf { box-shadow: 0 0 0 2px rgba(242,180,90,.85), 0 0 18px rgba(242,180,90,.45), 0 6px 14px rgba(0,0,0,.6) !important; }
+.loona-fab.hf::after { content: ''; position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: #F2B45A; animation: hfdot 2s ease-in-out infinite; }
+@keyframes hfdot { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .loona-fab.hf::after { animation: none; } }
+/* v48 nota del clip centrada */
+.ag-note { align-items: center !important; text-align: center !important; justify-content: center; padding: 3cqw 1cqw 1.4cqw !important; gap: .6cqw !important; }
+.ag-note .ag-xo { margin-top: .4cqw; }
+.ag-note .ag-sign { align-self: center !important; margin-top: auto; }
