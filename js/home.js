@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 41;
+export const APP_VERSION = 42;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -42,9 +42,8 @@ export async function renderHome(app, go) {
     ...subjects.map(s => { const n = nbs.filter(x => x.subject === s.id).length, p = pdfs.filter(x => x.subject === s.id).length;
       return h('button', { class: 'ag-sub', onclick: () => go(`#/m/${s.id}`) }, h('span', {}, s.name), h('small', {}, `${n} cuad. · ${p} PDF`)); }),
     h('button', { class: 'ag-sub ag-new', onclick: () => newSubject(go) }, h('span', { html: icon('plus', 16) }), h('span', {}, 'Nueva materia')));
-  let photo = null; try { photo = localStorage.getItem('homePhoto'); } catch { }
-  const pocket = h('button', { class: 'ag-z ag-pocket', style: { left: '8.6%', top: '56.8%', width: '20.8%', height: '28.6%' }, 'aria-label': 'Poner tu foto en el bolsillo', onclick: () => pickPhoto(pocket) },
-    photo ? h('img', { src: photo, alt: '' }) : h('span', { class: 'ag-pocket-t' }, 'Toca para poner tu foto'));
+  const pocket = h('div', { class: 'ag-z ag-pocket', style: { left: '8.6%', top: '56.8%', width: '20.8%', height: '28.6%' }, role: 'button', tabindex: 0, 'aria-label': 'Tu foto en el bolsillo' });
+  initPocket(pocket);
   const hour = new Date().getHours(), hi = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
   const scene = h('div', { class: 'agenda' },
     h('img', { class: 'ag-bg', src: 'img/agenda.webp', srcset: 'img/agenda-s.webp 1024w, img/agenda.webp 1536w', sizes: '(max-width: 700px) 1000px, 100vw', alt: '', draggable: false, fetchpriority: 'high' }),
@@ -77,15 +76,66 @@ export async function renderHome(app, go) {
   if (innerWidth < innerHeight) requestAnimationFrame(() => { vp.scrollLeft = scene.offsetWidth * 0.46; });
 }
 
-// tu foto en el bolsillo transparente (se guarda en blanco y negro, pequeña)
-async function pickPhoto(pocket) {
-  const f = await pickFile('image/*'); if (!f) return;
-  const img = await createImageBitmap(f); const sc = Math.min(1, 640 / Math.max(img.width, img.height));
-  const c = document.createElement('canvas'); c.width = img.width * sc; c.height = img.height * sc;
-  const x = c.getContext('2d'); x.filter = 'grayscale(1) contrast(1.15)'; x.drawImage(img, 0, 0, c.width, c.height);
-  const url = c.toDataURL('image/jpeg', .8);
-  try { localStorage.setItem('homePhoto', url); } catch { toast('La foto es muy grande'); }
-  pocket.replaceChildren(h('img', { src: url, alt: '' }));
+// tu foto en el bolsillo transparente (blanco y negro). Al ponerla puedes moverla y agrandarla;
+// al tocar «Listo» queda fija y ya no se mueve.
+function initPocket(pocket) {
+  const get = k => { try { return localStorage.getItem(k); } catch { return null; } };
+  const set = (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };
+  let photo = get('homePhoto'), pos = { x: 0, y: 0, s: 1 }, adj = false, menuT = 0;
+  try { pos = { ...pos, ...JSON.parse(get('homePhotoPos') || '{}') }; } catch { }
+  const img = h('img', { alt: '', draggable: false });
+  const place = () => { img.style.transform = `translate(${pos.x * 100}%, ${pos.y * 100}%) scale(${pos.s})`; };
+  const bar = h('div', { class: 'pk-bar' });
+  const b = (txt, fn, cls = '') => h('button', { class: 'pk-b ' + cls, onclick: e => { e.stopPropagation(); fn(); } }, txt);
+  const draw = () => {
+    if (photo) { img.src = photo; place(); pocket.replaceChildren(img, bar); }
+    else pocket.replaceChildren(h('span', { class: 'ag-pocket-t' }, 'Toca para poner tu foto'));
+  };
+  const zoom = k => { pos.s = Math.max(1, Math.min(4, pos.s * k)); place(); };
+  const startAdjust = () => {
+    adj = true; pocket.classList.add('adj'); clearTimeout(menuT);
+    bar.replaceChildren(b('−', () => zoom(1 / 1.15)), b('+', () => zoom(1.15)), b('Listo', finish, 'ok'));
+    toast('Arrastra la foto para acomodarla. Usa + y − para el tamaño.', 3000);
+  };
+  const finish = () => { adj = false; pocket.classList.remove('adj'); bar.replaceChildren(); set('homePhotoPos', JSON.stringify(pos)); toast('Foto fija', 1200); };
+  const change = async () => {
+    const f = await pickFile('image/*'); if (!f) return;
+    const bm = await createImageBitmap(f); const sc = Math.min(1, 900 / Math.max(bm.width, bm.height));
+    const c = document.createElement('canvas'); c.width = bm.width * sc; c.height = bm.height * sc;
+    const x = c.getContext('2d'); x.filter = 'grayscale(1) contrast(1.15)'; x.drawImage(bm, 0, 0, c.width, c.height);
+    const url = c.toDataURL('image/jpeg', .8);
+    if (!set('homePhoto', url)) return toast('La foto es muy grande');
+    photo = url; pos = { x: 0, y: 0, s: 1 }; draw(); startAdjust();
+  };
+  pocket.addEventListener('click', () => {
+    if (adj) return;
+    if (!photo) return change();
+    bar.replaceChildren(b('Mover', startAdjust), b('Cambiar', change));   // menú pequeño; se esconde solo
+    clearTimeout(menuT); menuT = setTimeout(() => { if (!adj) bar.replaceChildren(); }, 3500);
+  });
+  pocket.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pocket.click(); } });
+  // arrastrar (un dedo o mouse) y pellizcar (dos dedos) solo mientras se ajusta
+  const pts = new Map(); let last = null;
+  pocket.addEventListener('pointerdown', e => {
+    if (!adj || e.target.closest('.pk-b')) return;
+    e.preventDefault(); e.stopPropagation(); pocket.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); last = null;
+  });
+  pocket.addEventListener('pointermove', e => {
+    if (!adj || !pts.has(e.pointerId)) return;
+    const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+    const r = pocket.getBoundingClientRect();
+    if (pts.size >= 2) {
+      const [a, c] = [...pts.values()], d = Math.hypot(a[0] - c[0], a[1] - c[1]);
+      if (last) zoom(d / last); last = d; return;
+    }
+    pos.x += (e.clientX - prev[0]) / r.width; pos.y += (e.clientY - prev[1]) / r.height;
+    const lim = (pos.s - 1) / 2 + .35; pos.x = Math.max(-lim, Math.min(lim, pos.x)); pos.y = Math.max(-lim, Math.min(lim, pos.y));
+    place();
+  });
+  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) last = null; };
+  pocket.addEventListener('pointerup', up); pocket.addEventListener('pointercancel', up);
+  pocket.addEventListener('wheel', e => { if (!adj) return; e.preventDefault(); zoom(Math.exp(-e.deltaY * .002)); }, { passive: false });
+  draw();
 }
 
 export function toggleFull() {

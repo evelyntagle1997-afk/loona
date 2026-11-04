@@ -1313,3 +1313,12 @@ button.ag-z { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .agenda { width: min(100%, calc((100dvh - 100px) * 1.7778)); }
 .home.ag-home { width: 100%; max-width: 100vw; }
 .ag-vp { width: 100%; max-width: 100vw; min-width: 0; }
+/* v42 foto del bolsillo: ajustar y fijar */
+.ag-pocket { cursor: pointer; }
+.ag-pocket img { transform-origin: center; will-change: auto; }
+.ag-pocket.adj { cursor: grab; touch-action: none; outline: 1px dashed rgba(255,255,255,.55); outline-offset: -4px; }
+.ag-pocket.adj::after { opacity: .4; }
+.pk-bar { position: absolute; left: 50%; bottom: 6%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 3; }
+.pk-b { border: 0; border-radius: 999px; padding: 6px 12px; min-width: 34px; min-height: 30px; font: 600 13px system-ui, sans-serif; color: #111; background: linear-gradient(#fff, #d9d6d8); box-shadow: 0 2px 6px rgba(0,0,0,.5); cursor: pointer; }
+.pk-b.ok { background: linear-gradient(#f2b45a, #d48a2c); }
+.pk-b:active { transform: scale(.95); }
