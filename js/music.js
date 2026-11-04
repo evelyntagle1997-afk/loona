@@ -75,31 +75,48 @@ export function duck(on, reason = 'x') {
   }
 }
 // poner un video por id o enlace
-export function playUrl(url) { const p = parse(url); if (!p) return false; save(p); openMusic(); startRef?.(p); return true; }
+export function playUrl(url, { videoOnly = false } = {}) {
+  const p = parse(url); if (!p) return false; save(p);
+  if (box && startRef) { box.hidden = false; box.classList.remove('mini'); startRef(p); }
+  else openMusic(p);   // abre el reproductor y pone esta canción (una sola vez)
+  if (videoOnly) setTimeout(() => { box?.classList.remove('novideo', 'mini'); box?.classList.add('vonly'); }, 400);
+  return true;
+}
 let startRef = null;
-// buscar una canción: Gemini (con búsqueda de Google) encuentra el enlace de YouTube
+// ¿existe ese video? (oEmbed de YouTube, sin clave)
+async function exists(id) {
+  try { const c = new AbortController(); const t = setTimeout(() => c.abort(), 3500);
+    const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id), { signal: c.signal }); clearTimeout(t);
+    return r.ok; } catch { return null; }   // null = no se pudo comprobar
+}
+// buscar una canción: Gemini (con búsqueda de Google) encuentra el video y se reproduce aquí mismo
 async function playSearch(q) {
   if (!q) return false;
   const db = await import('./db.js'); const s = await db.settings();
-  if (!s.geminiKey) { window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank'); return true; }
+  if (!s.geminiKey) { toast('Necesito tu clave de Gemini para buscar canciones.', 3000); return false; }
+  const ids = [];
   for (const m of [s.geminiModel || 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash']) {
+    let r;
     try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(s.geminiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tools: [{ google_search: {} }], contents: [{ role: 'user', parts: [{ text: `Busca en YouTube: "${q}". Responde SOLO con el enlace https://www.youtube.com/watch?v=... del video oficial o más popular (si piden un mix o playlist, puede ser un enlace de lista). Nada más.` }] }] }) });
-      if (r.status === 404) continue;
-      if (!r.ok) break;
-      const j = await r.json(); const txt = j.candidates?.[0]?.content?.parts?.map(x => x.text || '').join(' ') || '';
-      const url = (txt.match(/https?:\/\/(?:www\.|music\.|m\.)?(?:youtube\.com\/(?:watch\?[^\s)"]+|playlist\?[^\s)"]+|shorts\/[\w-]+)|youtu\.be\/[\w-]+)/) || [])[0];
-      if (url && playUrl(url)) return true;
-      break;
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(s.geminiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tools: [{ google_search: {} }], contents: [{ role: 'user', parts: [{ text: `Busca en YouTube el video oficial (o el más visto) de: "${q}". Responde SOLO con hasta 3 enlaces completos https://www.youtube.com/watch?v=XXXXXXXXXXX, uno por línea, el mejor primero.` }] }] }) });
     } catch { break; }
+    if (!r.ok) { if (r.status === 429) { toast('Gemini llegó a su límite por ahora.', 3000); return false; } continue; }
+    const j = await r.json();
+    const txt = (j.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join(' ') + ' ' + JSON.stringify(j.candidates?.[0]?.groundingMetadata?.groundingChunks || []);
+    for (const mm of txt.matchAll(/(?:v=|youtu\.be\/|\/shorts\/|\/embed\/)([\w-]{11})/g)) if (!ids.includes(mm[1])) ids.push(mm[1]);
+    if (ids.length) break;
   }
-  window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank');
-  return true;
+  for (const id of ids.slice(0, 4)) {
+    const ok = await exists(id);
+    if (ok !== false) return playUrl('https://www.youtube.com/watch?v=' + id, { videoOnly: true });
+  }
+  toast('No encontré «' + q + '» en YouTube. Prueba con el nombre del artista y la canción.', 4000);
+  return false;
 }
 
-export function openMusic() {
-  if (box) { box.hidden = false; box.classList.remove('mini'); return; }
+export function openMusic(first) {
+  if (box) { box.hidden = false; box.classList.remove('mini'); if (first && startRef) startRef(first); return; }
   const titleEl = h('b', {}, 'Música');
   const vid = h('div', { class: 'yt-video' }, h('div', { id: 'yt-frame' }));
   const inp = h('input', { class: 'field', type: 'url', placeholder: 'Pega un enlace de YouTube (canción o lista)', 'aria-label': 'Enlace de YouTube' });
@@ -170,6 +187,6 @@ export function openMusic() {
     player.addEventListener?.('onReady', () => player.playVideo());
   }
   startRef = start;
-  const l = last(); if (l) start(l); else inp.focus();
+  const l = first || last(); if (l) start(l); else inp.focus();
   function close() { player?.destroy?.(); player = null; box.remove(); box = null; startRef = null; }
 }
