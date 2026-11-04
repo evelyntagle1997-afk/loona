@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 86;
+export const APP_VERSION = 87;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -67,7 +67,7 @@ export async function renderHome(app, go0) {
     if (k === curTab || flipping) return; flipping = true;
     if (k === 'agenda') await fillAgenda(); if (k === 'loona') await fillLoona();
     scene.querySelectorAll('.ag-tabl').forEach(t => t.classList.toggle('on', t.dataset.k === k));
-    flipPage(scene);
+    // sin hoja que gire: solo cambia el contenido
     setTimeout(() => { scene.querySelectorAll('.ag-sec').forEach(x => x.hidden = x.dataset.k !== k); scene.classList.toggle('sec-other', k !== 'materias'); curTab = k; }, 380);
     setTimeout(() => { flipping = false; }, 1150);
   };
@@ -357,13 +357,8 @@ export function openAgenda() {
       c.classList.remove('opening'); c.classList.add('open');
       // 3) la primera hoja espera: se pasa cuando tú la tocas
       const f = sc?.querySelector('.ag-flip'); if (!f) { sc?.classList.add('shown'); return r(); }
-      // hoja de papel vegetal con giro realista (StPageFlip): se arrastra desde la esquina o se toca
-      realPage(sc).then(ok => {
-        if (ok) return r();
-        f.classList.add('wait');   // respaldo si la librería no carga
-        const turn = e => { e?.stopPropagation(); f.removeEventListener('click', turn); f.classList.remove('wait'); f.style.visibility = 'hidden'; flipPage(sc); setTimeout(() => sc.classList.add('shown'), 420); };
-        f.addEventListener('click', turn); r();
-      });
+      // sin hojas que giren: la agenda abre directo en tu índice (nada translúcido ni que desaparezca)
+      sc?.classList.add('shown'); r();
     }, 1100);
   }, 380));
 }

@@ -1614,3 +1614,5 @@ html.lite .ag-vp::before { animation: none; }
 /* v86 los dijes (cristal ámbar, llave, medallón) cuelgan de las argollas por ENCIMA de las hojas pasadas */
 .ag-dijes { z-index: 8; pointer-events: none; height: auto; filter: drop-shadow(.2cqw .35cqw .3cqw rgba(0,0,0,.55)); }
 .ag-charm, .ag-medal, .ag-key { z-index: 9 !important; }
+/* v87 sin hojas que giren ni translúcidas */
+.ag-flip, .ag-book, .ag-turned { display: none !important; }
