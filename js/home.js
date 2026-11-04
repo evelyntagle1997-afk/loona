@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 75;
+export const APP_VERSION = 76;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -74,7 +74,7 @@ export async function renderHome(app, go0) {
   const pocket = h('div', { class: 'ag-z ag-pocket', style: { left: '8.6%', top: '56.8%', width: '20.8%', height: '28.6%' }, role: 'button', tabindex: 0, 'aria-label': 'Tu foto en el bolsillo' });
   initPocket(pocket);
 
-  const scene = h('div', { class: 'agenda' },
+  const scene = h('div', { class: 'agenda closed' },
     h('img', { class: 'ag-bg', src: 'img/agenda.webp', srcset: 'img/agenda-s.webp 1024w, img/agenda.webp 1536w', sizes: '(max-width: 700px) 1000px, 100vw', alt: '', draggable: false, fetchpriority: 'high' }),
     h('button', { class: 'ag-z ag-note ag-hot', style: { left: '20%', top: '12.6%', width: '16.2%', height: '28.2%' }, 'aria-label': 'Nota del clip: escribe un recordatorio', title: 'Tu nota: toca para escribir un recordatorio', onclick: editNote },
       h('span', { class: 'ag-hi' }, saludo().hi),
@@ -86,9 +86,9 @@ export async function renderHome(app, go0) {
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    deco('polaroid', 31.6, 41.6, 7.6, 'rotate(7deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
-    deco('corazon', 29.4, 55.5, 6.8, 'rotate(-6deg)', 'Dato de medicina para el ENEM', medFact),
-    deco('sello', 29.8, 70.5, 6.4, 'rotate(12deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
+    deco('polaroid', 31.4, 41.4, 8, 'rotate(6deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
+    deco('corazon', 29.2, 57, 7, 'rotate(-7deg)', 'Dato de medicina para el ENEM', medFact),
+    deco('sello', 66, 72, 9.6, 'rotate(-8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     portada(),
     hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
     hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
@@ -106,10 +106,10 @@ export async function renderHome(app, go0) {
     h('span', { class: 'ag-grain', 'aria-hidden': 'true' }),
     h('span', { class: 'ag-ver' }, 'v' + APP_VERSION));
   // tapa delantera de cuero: abre la agenda al entrar
-  const cover = h('div', { class: 'ag-cover', 'aria-hidden': 'true' },
+  const cover = h('div', { class: 'ag-cover init', 'aria-hidden': 'true' },
     h('div', { class: 'agc-front' }, h('span', { class: 'agc-strap' }), h('span', { class: 'agc-name' }, 'Loona'), h('span', { class: 'agc-moon' })),
     h('div', { class: 'agc-back' }));
-  scene.append(cover);
+  scene.append(h('div', { class: 'ag-desk', 'aria-hidden': 'true' }), cover);
   cover.addEventListener('click', () => openAgenda());
   const vp = h('div', { class: 'ag-vp' }, scene);
   requestAnimationFrame(() => requestAnimationFrame(() => openAgenda()));
@@ -317,11 +317,12 @@ function coverEl() { return document.querySelector('.ag-cover'); }
 export function openAgenda() {
   const c = coverEl(); if (!c) return Promise.resolve();
   const sc = c.closest('.agenda');
-  if (reduce()) { c.classList.remove('closing', 'shut'); c.classList.add('open'); sc?.classList.add('shown'); return Promise.resolve(); }
+  if (reduce()) { c.classList.remove('closing', 'shut', 'init'); c.classList.add('open'); sc?.classList.remove('closed'); sc?.classList.add('shown'); return Promise.resolve(); }
   sc?.classList.remove('shown');
   c.classList.add('unsnap');   // 1) se suelta el broche
   return new Promise(r => setTimeout(() => {
-    c.classList.remove('closing', 'shut', 'unsnap'); c.classList.add('opening');   // 2) gira la tapa
+    c.classList.remove('closing', 'shut', 'unsnap', 'init'); c.classList.add('opening');   // 2) gira la tapa
+    sc?.classList.remove('closed');
     setTimeout(() => {
       c.classList.remove('opening'); c.classList.add('open');
       const f = sc?.querySelector('.ag-flip'); if (f) { f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn'); }   // 3) pasa la primera hoja
@@ -334,6 +335,7 @@ export function closeAgenda() {
   const c = coverEl(); if (!c || reduce()) return Promise.resolve();
   c.closest('.agenda')?.classList.remove('shown');
   c.classList.remove('open', 'opening'); c.classList.add('closing');
+  setTimeout(() => c.closest('.agenda')?.classList.add('closed'), 380);
   return new Promise(r => setTimeout(() => { c.classList.remove('closing'); c.classList.add('shut'); r(); }, 750));
 }
 function toggleAgenda() { const c = coverEl(); if (!c) return; if (c.classList.contains('shut')) openAgenda(); else closeAgenda(); }

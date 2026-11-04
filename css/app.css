@@ -1541,3 +1541,13 @@ html.lite .ag-vp::before { animation: none; }
 @media (prefers-reduced-motion: reduce) { .ag-flip { display: none; } .agenda:not(.shown) * { opacity: 1 !important; translate: none !important; } }
 /* v74 fondo liso (sin el papel tapiz de dibujos) */
 .home.ag-home { background: radial-gradient(70% 60% at 50% 45%, transparent 40%, rgba(0,0,0,.65) 100%), radial-gradient(120% 100% at 50% 45%, #1f1d1e, #0e0d0e) !important; }
+/* v76 la agenda aparece CERRADA (solo la tapa) y luego se abre */
+.ag-desk { position: absolute; left: 0; top: 0; width: 47.2%; height: 100%; z-index: 5; pointer-events: none; opacity: 0;
+  background: radial-gradient(120% 100% at 80% 50%, #1b1a1b, #121112 70%); transition: opacity .35s ease .45s; }
+.agenda.closed .ag-desk { opacity: 1; transition-delay: 0s; }
+.agenda.closed .ag-tabs, .agenda.closed .ag-clipimg { opacity: 0; }
+.ag-tabs, .ag-clipimg { transition: opacity .4s ease .5s; }
+.ag-cover.init { visibility: visible; transform: rotateY(0); }
+/* más contraste y presencia en los recuerdos */
+.ag-deco img { filter: contrast(1.12) brightness(1.02) !important; }
+.ag-sello { z-index: 3 !important; }
