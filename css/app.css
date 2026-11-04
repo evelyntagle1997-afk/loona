@@ -1325,3 +1325,13 @@ button.ag-z { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .loona-panel .btn.oncall { background: linear-gradient(#f2b45a, #c97f24) !important; color: #111 !important; animation: callpulse 1.6s ease-in-out infinite; }
 @keyframes callpulse { 50% { box-shadow: 0 0 0 6px rgba(242,180,90,.25); } }
 @media (prefers-reduced-motion: reduce) { .loona-panel .btn.oncall { animation: none; } }
+/* v45 YouTube: modo solo video */
+.yt-t { font: 700 12px system-ui, sans-serif; line-height: 1; }
+.yt-back { display: none; }
+.yt.vonly { border-radius: 12px; padding: 0 !important; background: #000 !important; box-shadow: 0 10px 30px -10px rgba(0,0,0,.8) !important; }
+.yt.vonly::before, .yt.vonly::after { display: none !important; }
+.yt.vonly > :not(.yt-video):not(.yt-back) { display: none !important; }
+.yt.vonly .yt-video { height: auto; aspect-ratio: 16 / 9; opacity: 1; }
+.yt.vonly .yt-back { display: grid; place-items: center; position: absolute; top: 6px; left: 6px; width: 30px; height: 30px; border-radius: 50%; border: 0; color: #fff; background: rgba(0,0,0,.45); opacity: .25; cursor: grab; touch-action: none; transition: opacity .2s; z-index: 2; }
+.yt.vonly:hover .yt-back, .yt.vonly .yt-back:focus-visible { opacity: .95; }
+@media (hover: none) { .yt.vonly .yt-back { opacity: .6; } }

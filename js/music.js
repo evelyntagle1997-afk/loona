@@ -29,7 +29,8 @@ export function openMusic() {
   const titleEl = h('b', {}, 'Música');
   const vid = h('div', { class: 'yt-video' }, h('div', { id: 'yt-frame' }));
   const inp = h('input', { class: 'field', type: 'url', placeholder: 'Pega un enlace de YouTube (canción o lista)', 'aria-label': 'Enlace de YouTube' });
-  const btn = (ic, label, fn, cls = '') => h('button', { class: cls, 'aria-label': label, title: label, html: typeof ic === 'string' && ic.length < 12 && !ic.includes(' ') ? icon(ic, 18) : ic, onclick: fn });
+  const ICONS = ['prev', 'next', 'play', 'pause'];
+  const btn = (ic, label, fn, cls = '') => h('button', { class: cls, 'aria-label': label, title: label, html: ICONS.includes(ic) ? icon(ic, 18) : `<span class="yt-t">${ic}</span>`, onclick: fn });
   const playBtn = btn('play', 'Reproducir o pausar', () => { if (!player?.getPlayerState) return; player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo(); }, 'big');
   const seek = d => player?.seekTo && player.seekTo(Math.max(0, player.getCurrentTime() + d), true);
   const vol = d => { if (!player?.setVolume) return; const v = Math.max(0, Math.min(100, player.getVolume() + d)); player.unMute(); player.setVolume(v); toast('Volumen ' + v, 900); };
@@ -37,7 +38,7 @@ export function openMusic() {
     btn('prev', 'Canción anterior', () => player?.previousVideo?.()),
     btn('−10', 'Atrasar 10 segundos', () => seek(-10)), playBtn, btn('+10', 'Adelantar 10 segundos', () => seek(10)),
     btn('next', 'Siguiente canción', () => player?.nextVideo?.()),
-    btn('vol−', 'Bajar volumen', () => vol(-10)), btn('vol+', 'Subir volumen', () => vol(10)));
+    btn('🔉', 'Bajar volumen', () => vol(-10)), btn('🔊', 'Subir volumen', () => vol(10)));
   const go = () => {
     const p = parse(inp.value);
     if (!p) return toast('Ese enlace no es de YouTube. Copia el enlace desde Compartir → Copiar enlace.', 4000);
@@ -48,11 +49,22 @@ export function openMusic() {
     h('a', { class: 'chip', href: 'https://www.youtube.com/results?search_query=reggaeton+mix', target: '_blank', rel: 'noopener' }, 'Buscar'));
   const head = h('div', { class: 'yt-head' }, h('span', { html: icon('music', 18) }), titleEl,
     h('button', { class: 'icbtn', 'aria-label': 'Mostrar u ocultar el video', title: 'Mostrar u ocultar el video', html: icon('image', 18), onclick: () => box.classList.toggle('novideo') }),
+    h('button', { class: 'icbtn', 'aria-label': 'Solo el video', title: 'Solo el video (oculta los botones)', html: icon('full', 18), onclick: () => onlyVideo(true) }),
     h('button', { class: 'icbtn', 'aria-label': 'Minimizar', title: 'Minimizar (la música sigue)', html: icon('minus', 18), onclick: () => box.classList.add('mini') }),
     h('button', { class: 'icbtn', 'aria-label': 'Cerrar la música', title: 'Cerrar la música', html: icon('close', 18), onclick: close }),
     h('button', { class: 'yt-mini-ic', 'aria-label': 'Abrir el reproductor', html: icon('music', 22), onclick: e => { e.stopPropagation(); box.classList.remove('mini'); } }));
-  box = h('div', { class: 'yt leather-strip', role: 'region', 'aria-label': 'Reproductor de música' }, head, vid, ctrl, src);
+  // modo "solo video": se ocultan todos los botones; queda una pestañita casi invisible para volver y para mover el video
+  const back = h('button', { class: 'yt-back', 'aria-label': 'Mostrar los botones', title: 'Mostrar los botones', html: icon('music', 16) });
+  const onlyVideo = on => { box.classList.toggle('vonly', on); box.classList.remove('novideo'); try { localStorage.setItem('ytOnly', on ? '1' : ''); } catch { } };
+  box = h('div', { class: 'yt leather-strip', role: 'region', 'aria-label': 'Reproductor de música' }, head, vid, ctrl, src, back);
+  // la pestañita: un toque vuelve a mostrar los botones; arrastrar mueve el video
+  let bst = null;
+  back.addEventListener('pointerdown', e => { bst = { x: e.clientX, y: e.clientY, l: box.offsetLeft, t: box.offsetTop, m: false }; back.setPointerCapture(e.pointerId); });
+  back.addEventListener('pointermove', e => { if (!bst) return; const dx = e.clientX - bst.x, dy = e.clientY - bst.y; if (!bst.m && Math.hypot(dx, dy) < 6) return; bst.m = true;
+    Object.assign(box.style, { left: Math.max(4, Math.min(innerWidth - box.offsetWidth - 4, bst.l + dx)) + 'px', top: Math.max(4, Math.min(innerHeight - 60, bst.t + dy)) + 'px', right: 'auto' }); });
+  back.addEventListener('pointerup', () => { const moved = bst?.m; bst = null; if (!moved) onlyVideo(false); });
   document.body.append(box);
+  try { if (localStorage.getItem('ytOnly') === '1') box.classList.add('vonly'); } catch { }
   // arrastrar desde la cabecera
   let st = null;
   head.addEventListener('pointerdown', e => { if (e.target.closest('button') && !box.classList.contains('mini')) return; st = { x: e.clientX, y: e.clientY, l: box.offsetLeft, t: box.offsetTop, m: false }; head.setPointerCapture(e.pointerId); });
