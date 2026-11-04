@@ -28,6 +28,7 @@ const last = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch
 // cmd: pausar | reproducir | siguiente | anterior | subir | bajar | silencio | adelantar | atrasar | cerrar | buscar
 export async function control(cmd, arg) {
   if (cmd === 'buscar') return playSearch(arg);
+  if (radio && ['pausar', 'cerrar', 'silencio'].includes(cmd)) { stopStream(); if (!box) return true; }
   if (!box || !player?.getPlayerState) {
     if (cmd === 'reproducir') { if (last()) openMusic(); else playSearch(arg || pickTaste()); return true; }
     return false;
@@ -83,6 +84,16 @@ export function playUrl(url, { videoOnly = false } = {}) {
   return true;
 }
 let startRef = null;
+// respaldo seguro: radio lofi por audio directo (si YouTube no carga o el navegador lo bloquea)
+const STREAM = 'https://stream.zeno.fm/f3wvbbqmdg8uv';
+let radio = null;
+export function playStream() {
+  try {
+    radio?.pause(); radio = new Audio(STREAM); radio.loop = true; radio.volume = .5;
+    return radio.play().then(() => { toast('Música para estudiar sonando', 1800); return true; }).catch(() => { toast('Toca la pantalla una vez y vuelve a pedirme música (el navegador lo pide).', 4000); return false; });
+  } catch { return Promise.resolve(false); }
+}
+export function stopStream() { radio?.pause(); radio = null; }
 // si Loona elige sola: algo del estilo de Eve
 const TASTE = ['Chris Grey', 'Arctic Monkeys', 'The Neighbourhood', 'Cigarettes After Sex', 'The 1975', 'Lana Del Rey', 'Mazzy Star', 'Deftones', 'Billie Eilish'];
 export const pickTaste = () => TASTE[Math.floor(Math.random() * TASTE.length)] + ' canción popular';
@@ -96,7 +107,7 @@ async function exists(id) {
 async function playSearch(q) {
   if (!q) return false;
   const db = await import('./db.js'); const s = await db.settings();
-  if (!s.geminiKey) { toast('Necesito tu clave de Gemini para buscar canciones.', 3000); return false; }
+  if (!s.geminiKey) return playStream();
   const ids = [];
   for (const m of [s.geminiModel || 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash']) {
     let r;
@@ -114,8 +125,8 @@ async function playSearch(q) {
     const ok = await exists(id);
     if (ok !== false) return playUrl('https://www.youtube.com/watch?v=' + id);
   }
-  toast('No encontré «' + q + '» en YouTube. Prueba con el nombre del artista y la canción.', 4000);
-  return false;
+  toast('No encontré «' + q + '» en YouTube; te pongo música para estudiar.', 3500);
+  return playStream();
 }
 
 export function openMusic(first) {
@@ -191,12 +202,13 @@ export function openMusic(first) {
   }
   // que suene de verdad: volumen audible y, si el navegador bloquea el audio automático, lo arranca y avisa
   function ensureSound() {
+    stopStream();
     try { player.unMute(); if ((player.getVolume?.() ?? 100) < 40 && base == null) player.setVolume(70); player.playVideo(); } catch { }
     setTimeout(() => {
       if (!player?.getPlayerState) return;
       if (player.getPlayerState() !== 1) {
         try { player.mute(); player.playVideo(); setTimeout(() => { try { player.unMute(); } catch { } }, 600); } catch { }
-        setTimeout(() => { if (player?.getPlayerState?.() !== 1 || player?.isMuted?.()) { box?.classList.remove('vonly', 'mini'); toast('Toca ▶ en el reproductor para que suene (el navegador pidió un toque).', 4500); } }, 1800);
+        setTimeout(() => { if (player?.getPlayerState?.() !== 1) { box?.classList.remove('vonly', 'mini'); toast('YouTube no arrancó; pongo música para estudiar mientras tanto. Toca ▶ si quieres el video.', 4500); playStream(); } }, 4000);
       }
     }, 1500);
   }

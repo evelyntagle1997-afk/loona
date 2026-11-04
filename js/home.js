@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 89;
+export const APP_VERSION = 90;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -58,7 +58,7 @@ export async function renderHome(app, go0) {
   const fillLoona = async () => {
     const L = await import('./loona.js'); const m = await L.memoryText();
     loonaSec.replaceChildren(h('p', { class: 'ag-idx-h' }, 'Loona'),
-      h('p', { class: 'ag-mem' }, m ? m.split('\n').filter(x => x.trim()).slice(0, 6).join('\n') : 'Todavía no me acuerdo de nada. Háblame más, genio.'),
+      h('p', { class: 'ag-mem' }, m ? m.split('\n').filter(x => x.trim()).slice(0, 6).join('\n') : 'Todavía no me acuerdo de nada. Cuéntame de ti cuando quieras.'),
       h('button', { class: 'ag-sub ag-new', onclick: () => L.callLoona() }, h('span', {}, 'Hablar con Loona')));
   };
   // pasar la hoja: una página de papel vegetal gira sobre las argollas y aparece la otra sección
@@ -269,7 +269,7 @@ function hot(cls, l, t, w, hh, label, fn) {
 // saludo según la hora (con la actitud de Loonie)
 function saludo() {
   const d = new Date(), hr = d.getHours();
-  const [hi, line] = hr < 5 ? ['¿Despierta aún, Eve?', 'duerme un poco… o estudia, lo que sea'] : hr < 12 ? ['Buenos días, Eve', '¿qué estudiamos hoy?'] : hr < 19 ? ['Buenas tardes, Eve', 'un tema más y te dejo en paz'] : ['Buenas noches, Eve', 'la noche es nuestra. a estudiar'];
+  const [hi, line] = hr < 5 ? ['Buenas noches, Eve', 'la noche es tranquila. vamos despacio'] : hr < 12 ? ['Buenos días, Eve', '¿qué estudiamos hoy?'] : hr < 19 ? ['Buenas tardes, Eve', 'un tema más y te dejo en paz'] : ['Buenas noches, Eve', 'la noche es nuestra. a estudiar'];
   return { hi, line, date: d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }) };
 }
 const noteText = () => { try { return localStorage.getItem('homeNote') || ''; } catch { return ''; } };

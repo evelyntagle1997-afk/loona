@@ -1627,3 +1627,27 @@ html.lite .ag-vp::before { animation: none; }
   100% { opacity: 0; transform: translate(-3.2cqw, 3.6cqw) rotate(2deg) scale(1.15); } }
 .ag-cover.closing ~ .ag-dije-out, .agenda.closed .ag-dije-out { animation: none; }
 @media (prefers-reduced-motion: reduce) { .ag-dije-out { animation: none !important; } }
+/* v90 resúmenes con IA: infografía ordenada sobre negro con brillo neón (cool como tu agenda) */
+.sum { --neo: #E9E5E2; background: radial-gradient(120% 80% at 50% 0%, #161416, #0a090a 70%); color: #ECE8E5; border-radius: 18px; padding: 22px 22px 18px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--neo) 35%, transparent), 0 0 22px color-mix(in srgb, var(--neo) 18%, transparent), inset 0 0 40px rgba(0,0,0,.6); }
+.sum .sum-title { color: #fff !important; -webkit-text-stroke: 0 !important; filter: none !important; text-shadow: 0 0 4px var(--neo), 0 0 14px var(--neo), 0 0 28px color-mix(in srgb, var(--neo) 60%, transparent); margin-bottom: 18px; }
+.sum .sum-title::before, .sum .sum-title::after { color: var(--neo) !important; text-shadow: 0 0 8px var(--neo); }
+.sum .sum-body { column-count: initial !important; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.sum.lay-una .sum-body { grid-template-columns: 1fr; }
+.sum .sum-sec { margin: 0; padding: 10px 12px 8px; border-radius: 12px; border: 1.5px solid color-mix(in srgb, var(--neo) 65%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--neo) 22%, transparent), inset 0 0 14px color-mix(in srgb, var(--neo) 6%, transparent); background: rgba(255,255,255,.02); }
+.sum .sum-h { display: block; background: none !important; padding: 0 0 6px; margin: 0 0 6px; font: 700 15px/1.2 system-ui, sans-serif !important; letter-spacing: .12em; text-transform: uppercase; color: var(--neo) !important; text-shadow: 0 0 8px color-mix(in srgb, var(--neo) 70%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--neo) 35%, transparent); }
+.sum .sum-h::after { content: ''; }
+.sum .sum-sec ul { margin: 0; padding-left: 16px; }
+.sum .sum-sec li { color: #ECE8E5; margin: 3px 0; }
+.sum .sum-sec li::marker { color: var(--neo); }
+.sum .sum-sec.cat-definicion, .sum .sum-sec.cat-ideas { grid-column: 1 / -1; }
+.sum .sum-sec.cat-datos { grid-column: 1 / -1; border-style: dashed; background: color-mix(in srgb, var(--neo) 6%, transparent); }
+.sum .ai-box { background: rgba(255,255,255,.03) !important; border: 1px solid color-mix(in srgb, var(--neo) 40%, transparent) !important; color: #ECE8E5 !important; border-radius: 12px; }
+.sum .ai-box b, .sum .sum-quiz > summary, .sum .q > summary { color: var(--neo) !important; }
+.sum .sum-src, .sum .sum-cont { color: color-mix(in srgb, var(--neo) 70%, #999) !important; }
+.sum .sum-title, .nb-inner .sum .sum-title, .nb-inner[data-tone] .sum .sum-title { background: none !important; -webkit-text-fill-color: #fff !important; color: #fff !important; }
+.sum .sum-h, .nb-inner .sum .sum-h, .nb-inner[data-tone] .sum .sum-h { background: none !important; box-shadow: none !important; }
+.sum .sum-sec li, .nb-inner[data-tone] .sum .sum-sec li { color: #ECE8E5 !important; }
+.nb-inner .sum .sum-h, .nb-inner[data-tone] .sum .sum-h, .sum h4.sum-h { color: var(--neo) !important; -webkit-text-fill-color: var(--neo) !important; }
+.sum .sum-title { text-shadow: 0 0 4px var(--neo), 0 0 14px var(--neo), 0 0 30px color-mix(in srgb, var(--neo) 60%, transparent) !important; }

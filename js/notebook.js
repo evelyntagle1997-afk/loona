@@ -1181,6 +1181,7 @@ export class Notebook {
     const root = h('div', { class: 'sum lay-' + (el.layout || 'dos') });
     const sub = this.subject;
     root.style.setProperty('--sc', sub?.coverColor || '#7A2B3A');
+    root.style.setProperty('--neo', neonOf(sub?.name));   // brillo neón: plata por defecto; color solo si el tema lo pide
     const tf = el.titleFont || this.nb.titleFont || 'Grenze Gotisch'; ensureFont(tf);
     if (!el.cont && el.title) { const t = h('div', { class: 'sum-title', 'data-edit': 'title' }, el.title); t.style.fontFamily = `'${tf}', 'Pirata One', serif`; if (el.titleK) t.style.fontSize = `calc(var(--tsz, 56px) * ${el.titleK})`; root.append(t); }
     else if (el.cont && el.title) root.append(h('div', { class: 'sum-cont' }, el.title + ' (continúa)'));
@@ -1276,3 +1277,14 @@ function fmtItem(t) {
   return m ? `<b>${m[1]}:</b> ${m[2]}` : s;
 }
 export { LEVELS, catLabel, debounce };
+
+// color del brillo neón del resumen según la materia (la base siempre es negra; plata si no hace falta otro color)
+export function neonOf(name = '') {
+  const n = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/bio|anat|fisiolog|medic|salud/.test(n)) return '#7CF5B4';
+  if (/quim/.test(n)) return '#7FD4FF';
+  if (/fis/.test(n)) return '#B39BFF';
+  if (/hist|socio|geograf|filo/.test(n)) return '#F2B45A';
+  if (/reda|lengua|liter|portug|espan/.test(n)) return '#E07A93';
+  return '#E9E5E2';
+}
