@@ -17,7 +17,7 @@ const PAPERS = [
   { k: 'puntos', name: 'Puntos' }, { k: 'cuadricula', name: 'Cuadrícula' }, { k: 'rayas', name: 'Rayas' },
   { k: 'liso', name: 'Liso' }, { k: 'cornell', name: 'Cornell' },
 ];
-const PAPER_TONES = [{ k: 'negro', c: '#081827' }, { k: 'humo', c: '#10243A' }, { k: 'crema', c: '#FBF5EC' }, { k: 'blanco', c: '#FFFDF9' }, { k: 'rosa', c: '#F8EDEB' }, { k: 'kraft', c: '#E9D9C2' }];
+const PAPER_TONES = [{ k: 'negro', c: '#111112' }, { k: 'humo', c: '#2b2b2e' }, { k: 'crema', c: '#FBF5EC' }, { k: 'blanco', c: '#FFFDF9' }, { k: 'rosa', c: '#F8EDEB' }, { k: 'kraft', c: '#E9D9C2' }];
 const BLOCKS = [
   { k: 'titulo', name: 'Título con lettering', html: 'Mi tema', w: 520 },
   { k: 'gotico', name: 'Título gótico', html: 'Historia', w: 560 },
@@ -1324,15 +1324,7 @@ function fmtItem(t) {
 export { LEVELS, catLabel, debounce };
 
 // color del brillo neón del resumen según la materia (la base siempre es negra; plata si no hace falta otro color)
-export function neonOf(name = '') {
-  const n = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (/bio|anat|fisiolog|medic|salud/.test(n)) return '#7CF5B4';
-  if (/quim/.test(n)) return '#7FD4FF';
-  if (/fis/.test(n)) return '#B39BFF';
-  if (/hist|socio|geograf|filo/.test(n)) return '#F2B45A';
-  if (/reda|lengua|liter|portug|espan/.test(n)) return '#E07A93';
-  return '#E9E5E2';
-}
+export function neonOf() { return '#FF4655'; }   // paleta: negro, blanco, plomo, plata y rojo neón
 
 // tema de ilustraciones del borde según la materia
 export function themeOf(name = '') {
@@ -1341,4 +1333,4 @@ export function themeOf(name = '') {
   if (/quim/.test(n)) return 'quim';
   return 'gen';
 }
-const NEON_TH = { bio: '#7CF5B4', quim: '#7FD4FF', gen: '#E9E5E2' };
+const NEON_TH = { bio: '#FF4655', quim: '#FF4655', gen: '#FF4655' };
