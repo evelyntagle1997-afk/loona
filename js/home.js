@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 51;
+export const APP_VERSION = 52;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -162,6 +162,22 @@ async function medFact() {
   const L = await import('./loona.js'); const s = await db.settings();
   if (s.geminiKey) { try { const t = await L.aiText(s, 'Dame UN dato corto de biología o medicina que suela caer en el ENEM, en una sola frase, con tu actitud de Loona.'); if (t) return L.speak(t); } catch { } }
   L.speak(MED[Math.floor(Math.random() * MED.length)]);
+}
+// prueba la clave de Gemini y dice en palabras simples qué pasa
+async function testKey(k, model) {
+  if (!k) return 'Falta pegar la clave';
+  for (const m of [...new Set([model || 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash'])]) {
+    let r; try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(k)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'Responde solo: ok' }] }] }) }); }
+    catch { return 'Sin internet'; }
+    if (r.ok) return '✓ La clave funciona (' + m + ')';
+    const t = await r.text();
+    if (r.status === 404) continue;
+    if (r.status === 429) return 'La clave funciona, pero llegaste al límite gratis por hoy';
+    if (/ACCESS_TOKEN_TYPE_UNSUPPORTED/.test(t)) return '✗ Google no acepta este tipo de clave (AQ.). Crea otra en AI Studio';
+    if (r.status === 400 || r.status === 401 || r.status === 403) return '✗ Clave no válida (' + r.status + '). Cópiala otra vez';
+    return '✗ Error ' + r.status;
+  }
+  return '✗ Ningún modelo disponible';
 }
 // zona tocable sobre un objeto de la foto (se ilumina al pasar el mouse y muestra qué hace)
 function hot(cls, l, t, w, hh, label, fn) {
@@ -351,7 +367,8 @@ export async function settings(tab = 'nube') {
       h('label', { class: 'lbl' }, 'Modelo', model),
       h('label', { class: 'dp-tg' }, auto, h('span', { class: 'sw' }), 'Mejorar con IA automáticamente al terminar de subrayar un tema'),
       h('p', { class: 'opt-hint' }, 'La clave se guarda en tu dispositivo y en tu nube privada. El texto subrayado se envía a Google solo cuando se usa la IA.'),
-      h('div', { class: 'ie-row' }, h('button', { class: 'btn primary', onclick: async () => { await db.saveSettings({ geminiKey: key.value.trim(), geminiModel: model.value.trim() || 'gemini-3.8-flash', aiAuto: auto.checked }); toast('Ajustes de IA guardados'); m.close(); } }, 'Guardar')),
+      h('div', { class: 'ie-row' }, h('button', { class: 'btn primary', onclick: async () => { await db.saveSettings({ geminiKey: key.value.trim(), geminiModel: model.value.trim() || 'gemini-3.8-flash', aiAuto: auto.checked }); toast('Ajustes de IA guardados'); m.close(); } }, 'Guardar'),
+        h('button', { class: 'btn', onclick: async e => { const b = e.currentTarget; b.textContent = 'Probando…'; b.textContent = await testKey(key.value.trim(), model.value.trim()); } }, 'Probar clave')),
     );
   } else if (tab === 'fuentes') {
     const list = h('ul', { class: 'font-own' }, ...(await db.all('font')).map(f => h('li', { style: { fontFamily: `'${f.family}'` } }, f.family)));

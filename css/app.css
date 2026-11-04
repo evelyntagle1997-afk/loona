@@ -1380,3 +1380,6 @@ button.ag-z { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ag-deco img { display: block; width: 100%; height: auto; pointer-events: none; }
 @media (hover: hover) { .ag-deco:hover { transform: var(--rot, none) translateY(-.4cqw) scale(1.03) !important; } }
 .ag-index { max-height: 64%; }
+.hf-peek { position: fixed; z-index: 46; right: max(80px, env(safe-area-inset-right)); bottom: calc(104px + env(safe-area-inset-bottom, 0px)); max-width: min(60vw, 340px); padding: 6px 12px; border-radius: 12px; background: rgba(10,10,10,.82); color: #e9e5e2; font: 13px system-ui, sans-serif; opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; pointer-events: none; }
+.hf-peek.on { opacity: 1; transform: none; }
+.study .hf-peek { bottom: calc(26px + env(safe-area-inset-bottom, 0px)); }

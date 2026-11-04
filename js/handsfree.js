@@ -6,9 +6,15 @@ import { h, toast } from './ui.js';
 import { talk, talkAudio, speak, isBusy } from './loona.js';
 
 const KEY = 'loonaHF';
-const WAKE = /\b(loona|luna|lona|lunna|louna)\b[,.!¿?\s]*/i;
+const WAKE = /\b(loona|luna|lona|lunna|louna|luny|luni|lunny|loonie|looney|loony|lunita|lúni|lunie|lunei)\b[,.!¿?\s]*/i;
 let on = false, engine = null, follow = 0;
 const dummy = h('p');
+// muestra en la burbuja lo último que Loona oyó, para que sepas que te está escuchando
+function peek(t) {
+  let el = document.getElementById('hf-peek');
+  if (!el) { el = h('div', { id: 'hf-peek', class: 'hf-peek' }); document.body.append(el); }
+  el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 3500);
+}
 const fab = () => document.getElementById('loona-fab');
 const mark = st => { const f = fab(); if (!f) return; f.classList.toggle('hf', !!st); f.dataset.hf = st || ''; f.title = st ? 'Loona te escucha: di «Loona…» (toca la llave para apagar)' : 'Hablar con Loona'; };
 export const isOn = () => on;
@@ -57,7 +63,7 @@ function startSR(SR) {
     if (isBusy() || recording()) return setTimeout(run, 600);   // no escucha mientras Loona habla o grabas una clase
     r = new SR(); r.lang = 'es-419'; r.continuous = true; r.interimResults = false;
     r.onaudiostart = () => { gotAudio = true; restarts = 0; };
-    r.onresult = ev => { for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) { const t = ev.results[i][0].transcript; if (WAKE.test(t) || Date.now() < follow) { try { r.abort(); } catch { } heard(t).finally(() => setTimeout(run, 300)); return; } } };
+    r.onresult = ev => { for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) { const t = ev.results[i][0].transcript; peek('Oí: «' + t.trim() + '»'); if (WAKE.test(t) || Date.now() < follow) { try { r.abort(); } catch { } heard(t).finally(() => setTimeout(run, 300)); return; } } };
     r.onerror = e => { if (['network', 'service-not-allowed', 'language-not-supported', 'audio-capture'].includes(e.error)) fallback(e.error); else if (e.error === 'not-allowed') { toast('Permite el micrófono para que Loona te escuche.'); stop(); } };
     r.onend = () => { if (alive && on && !isBusy()) { if (++restarts > 30 && !gotAudio) return fallback('sin audio'); setTimeout(run, 250); } else if (alive && on) setTimeout(run, 600); };
     try { r.start(); } catch { setTimeout(run, 1000); }
@@ -84,10 +90,10 @@ async function startVAD() {
       const dur = Date.now() - t0;
       if (dur < 700 || !alive || !on) return;
       if (Date.now() - lastSend < 2500) return;   // no más de una consulta cada 2,5 s
-      lastSend = Date.now(); sending = true;
+      lastSend = Date.now(); sending = true; peek('Escuchando lo que dijiste…');
       try {
         const r = await talkAudio(new Blob(chunks, { type: rec.mimeType || mt || 'audio/webm' }), dummy, { wake: Date.now() > follow });
-        if (r !== 'ignored') follow = Date.now() + 8000;
+        if (r !== 'ignored') follow = Date.now() + 8000; else peek('(no me llamaste: di «Luny…»)');
         if (r === 'bye') follow = 0;
       } finally { sending = false; }
     };
