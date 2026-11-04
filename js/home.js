@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 81;
+export const APP_VERSION = 82;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -69,7 +69,7 @@ export async function renderHome(app, go0) {
     scene.querySelectorAll('.ag-tabl').forEach(t => t.classList.toggle('on', t.dataset.k === k));
     const f = scene.querySelector('.ag-flip'); f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn');
     setTimeout(() => { scene.querySelectorAll('.ag-sec').forEach(x => x.hidden = x.dataset.k !== k); scene.classList.toggle('sec-other', k !== 'materias'); curTab = k; }, 380);
-    setTimeout(() => { f.classList.remove('turn'); flipping = false; }, 900);
+    setTimeout(() => { f.classList.remove('turn'); flipping = false; turned(scene); }, 1150);
   };
   const pocket = h('div', { class: 'ag-z ag-pocket', style: { left: '8.6%', top: '56.8%', width: '20.8%', height: '28.6%' }, role: 'button', tabindex: 0, 'aria-label': 'Tu foto en el bolsillo' });
   initPocket(pocket);
@@ -100,6 +100,7 @@ export async function renderHome(app, go0) {
     P('ag-page', 52, 12, 35, 75, idx, agendaSec, loonaSec),
     h('div', { class: 'ag-tabs', role: 'tablist', 'aria-label': 'Separadores' }, ...TABS.map(([k, label], i) =>
       h('button', { class: 'ag-tabl' + (i === 0 ? ' on' : ''), role: 'tab', 'data-k': k, style: { top: (16 + i * 13) + '%' }, onclick: e => { e.stopPropagation(); flipTo(k); } }, h('span', {}, label)))),
+    h('div', { class: 'ag-turned', 'aria-hidden': 'true' }),
     h('div', { class: 'ag-flip', role: 'button', 'aria-label': 'Pasar la hoja' }, h('div', { class: 'agf-front' }, h('span', { class: 'agf-hint' }, 'Toca para pasar la hoja')), h('div', { class: 'agf-back' })),
     h('span', { class: 'ag-word', 'aria-hidden': 'true' }, 'Loona'),
     h('span', { class: 'ag-light', 'aria-hidden': 'true' }),
@@ -310,6 +311,8 @@ export function pomoTick() {
   pomoT = setTimeout(pomoTick, 1000);
 }
 
+// la hoja que pasaste queda del lado izquierdo (se ve su espalda); se apilan hasta 3
+function turned(sc) { const t = sc?.querySelector('.ag-turned'); if (!t) return; const n = Math.min(3, (+t.dataset.n || 0) + 1); t.dataset.n = n; t.replaceChildren(...Array.from({ length: n }, (_, i) => h('span', { style: { '--i': i } }))); t.classList.add('on'); }
 const TABS = [['materias', 'Materias'], ['agenda', 'Agenda'], ['loona', 'Loona']];
 // ---------- abrir y cerrar la agenda ----------
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -332,7 +335,7 @@ export function openAgenda() {
         e?.stopPropagation(); f.removeEventListener('click', turn); f.classList.remove('wait');
         f.classList.remove('turn'); void f.offsetWidth; f.classList.add('turn');
         setTimeout(() => sc.classList.add('shown'), 420);   // 4) entra el contenido
-        setTimeout(() => f.classList.remove('turn'), 950);
+        setTimeout(() => { f.classList.remove('turn'); turned(sc); }, 1150);
       };
       f.addEventListener('click', turn);
       r();
@@ -341,7 +344,7 @@ export function openAgenda() {
 }
 export function closeAgenda() {
   const c = coverEl(); if (!c || reduce()) return Promise.resolve();
-  c.closest('.agenda')?.classList.remove('shown', 'left'); c.closest('.agenda')?.querySelector('.ag-flip')?.classList.remove('wait');
+  c.closest('.agenda')?.classList.remove('shown', 'left'); { const t = c.closest('.agenda')?.querySelector('.ag-turned'); if (t) { t.classList.remove('on'); t.dataset.n = 0; t.replaceChildren(); } } c.closest('.agenda')?.querySelector('.ag-flip')?.classList.remove('wait');
   c.classList.remove('open', 'opening'); c.classList.add('closing');
   setTimeout(() => c.closest('.agenda')?.classList.add('closed'), 380);
   return new Promise(r => setTimeout(() => { c.classList.remove('closing'); c.classList.add('shut'); r(); }, 750));

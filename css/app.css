@@ -1574,3 +1574,13 @@ html.lite .ag-vp::before { animation: none; }
 .agf-back { filter: brightness(.85) !important; }
 .agenda .ag-page, .agenda .ag-portada { transition: opacity .6s ease .1s !important; }
 .agenda.shown .ag-deco, .agenda.shown .ag-note, .agenda.shown .ag-card { translate: none !important; }
+/* v82 la hoja girada queda a la izquierda: se ve su espalda (papel vegetal translúcido) */
+.ag-turned { position: absolute; left: 10.6%; top: 9.2%; width: 38.8%; height: 80.6%; z-index: 4; pointer-events: none; opacity: 0; transition: opacity .35s ease; }
+.ag-turned.on { opacity: 1; }
+.ag-turned span { position: absolute; inset: 0; transform: translateX(calc(var(--i) * -.35cqw)) translateY(calc(var(--i) * .12cqw)); border-radius: .6cqw 0 0 .6cqw;
+  background: linear-gradient(270deg, rgba(0,0,0,.28), transparent 10%), url(../img/agenda.webp) 81.6% 46% / 257.7% auto;
+  transform-origin: right center; scale: -1 1; opacity: .28; mix-blend-mode: screen; filter: blur(.4px) brightness(.95);
+  box-shadow: -.2cqw .3cqw .6cqw rgba(0,0,0,.25); }
+.ag-turned span:last-child { opacity: .34; }
+.ag-turned span { opacity: .42 !important; box-shadow: inset .15cqw 0 0 rgba(255,255,255,.35), -.3cqw .4cqw .8cqw rgba(0,0,0,.35) !important; }
+.ag-turned span:last-child { opacity: .5 !important; }
