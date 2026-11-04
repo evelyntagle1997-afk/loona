@@ -80,7 +80,12 @@ async function ttsFetch(s, text) {
   }
   throw last || new Error('sin modelo de voz');
 }
+// cómo pronunciar su nombre (solo cambia la voz; el texto escrito sigue diciendo Eve)
+const NOMBRE = { iv: 'Iv', eve: 'Éve', evelin: 'Évelin' };
+export const nameMode = () => { try { return localStorage.getItem('loonaNombre') || 'iv'; } catch { return 'iv'; } };
+const forVoice = t => t.replace(/\bEvelyn\b/g, 'Évelin').replace(/\bEve\b/g, NOMBRE[nameMode()] || 'Iv');
 async function sayAI(s, text) {
+  text = forVoice(text);
   let wav = await ttsCache(text);
   if (!wav) { wav = await ttsFetch(s, text); if (text.length < 120) ttsCache(text, wav); }
   audioEl?.pause(); audioEl = new Audio(URL.createObjectURL(wav)); audioEl.volume = 1;
@@ -131,7 +136,7 @@ export function farewell() {
 }
 
 // ---------- conversación ----------
-export const PERSONA = `Eres Loona (Eve te dice Luny o Loonie), la agenda gótica de cuero negro de Eve y su compañera de estudio. Eres un personaje original con alma gótica: cool, tranquila, segura, de pocas palabras, con humor seco suave.
+export const PERSONA = `Eres Loona (Eve te dice Luny o Loonie). Ella se llama Evelyn y le dices Eve, la agenda gótica de cuero negro de Eve y su compañera de estudio. Eres un personaje original con alma gótica: cool, tranquila, segura, de pocas palabras, con humor seco suave.
 Con Eve eres leal, profundamente cálida, cariñosa y comprensiva: un espacio seguro. Actúas como una mentora con criterio psicológico: si tuvo un mal día en el trabajo (Skechers) o está estresada, la escuchas con atención, validas lo que siente, le haces preguntas suaves para entenderla y la guías con calma hacia un estado mental sereno y equilibrado (respirar, ordenar lo que le preocupa, separar lo que depende de ella, un paso pequeño a la vez). Luego, cuando esté lista, la motivas a estudiar con algo de música de fondo.
 PROHIBIDO burlarte de ella o usar apodos burlones ("genio", "su majestad de la procrastinación", "doctora Eve" en tono de burla, etc.). PROHIBIDO mandarla a dormir de forma despectiva o regañarla. Tu humor es seco pero siempre amable.
 Reglas de estilo: español latino, frases cortas y naturales (2 a 4), sin emojis, nada de sonar a asistente robótico. Usa SIEMPRE la fecha y hora reales que te doy en el contexto; nunca inventes la hora.
@@ -434,6 +439,8 @@ function toggle() {
   panel = h('div', { class: 'loona-panel leather-panel', role: 'dialog', 'aria-label': 'Loona' },
     h('div', { class: 'loona-head' }, h('b', {}, 'Loona'), h('button', { class: 'icbtn', 'aria-label': 'Cerrar', html: icon('close', 18), onclick: toggle })),
     heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel, hfRow(),
+    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Mi nombre suena:'), ...[['iv', '«Iv»'], ['eve', '«É-ve»'], ['evelin', '«Évelin»']].map(([k, n]) =>
+      h('button', { class: 'chip' + (nameMode() === k ? ' on' : ''), onclick: e => { try { localStorage.setItem('loonaNombre', k); } catch { } e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); speak('Hola, Eve.'); } }, n))),
     h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Memoria:'),
       h('button', { class: 'chip', onclick: async () => { const m = await memoryText(); bubble(m ? 'Lo que recuerdo de nosotras:\n' + m.slice(0, 600) : 'Todavía no me acuerdo de nada. Cuéntame de ti cuando quieras.'); } }, 'Qué recuerdas'),
       h('button', { class: 'chip', onclick: async e => { if (e.target.dataset.ok) { await forget(); e.target.textContent = 'Memoria borrada'; } else { e.target.dataset.ok = 1; e.target.textContent = 'Toca otra vez para borrar'; } } }, 'Borrar memoria')),
