@@ -1584,3 +1584,9 @@ html.lite .ag-vp::before { animation: none; }
 .ag-turned span:last-child { opacity: .34; }
 .ag-turned span { opacity: .42 !important; box-shadow: inset .15cqw 0 0 rgba(255,255,255,.35), -.3cqw .4cqw .8cqw rgba(0,0,0,.35) !important; }
 .ag-turned span:last-child { opacity: .5 !important; }
+/* v83 sin transiciones automáticas: solo se mueve algo cuando tú haces clic */
+.ag-vp::before { animation: none !important; }
+.agc-hint, .ag-flip.wait .agf-hint { animation: none !important; }
+.agenda .ag-page, .agenda .ag-portada, .agenda .ag-deco, .agenda .ag-note, .agenda .ag-card, .ag-tabs, .ag-clipimg, .ag-desk, .ag-turned { transition: none !important; }
+.agenda.left .ag-note, .agenda.left .ag-card, .agenda.left .ag-deco { transition: none !important; }
+.loona-fab.hf::after { animation: none !important; }
