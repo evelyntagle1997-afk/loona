@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 106;
+export const APP_VERSION = 107;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -81,6 +81,7 @@ export async function renderHome(app, go0) {
 
   const scene = h('div', { class: 'agenda closed' },
     h('img', { class: 'ag-bg', src: 'img/agenda.webp', srcset: 'img/agenda-s.webp 1024w, img/agenda.webp 1536w', sizes: '(max-width: 700px) 1000px, 100vw', alt: '', draggable: false, fetchpriority: 'high' }),
+    h('img', { class: 'ag-dije-in', src: 'img/dije-real.webp', alt: '', draggable: false, 'aria-hidden': 'true' }),   // dije realista colgado de la argolla
     h('button', { class: 'ag-z ag-note ag-hot', style: { left: '20%', top: '12.6%', width: '16.2%', height: '28.2%' }, 'aria-label': 'Nota del clip: escribe un recordatorio', title: 'Tu nota: toca para escribir un recordatorio', onclick: editNote },
       h('span', { class: 'ag-hi' }, saludo().hi),
       h('span', { class: 'ag-date' }, saludo().date),
@@ -91,7 +92,7 @@ export async function renderHome(app, go0) {
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    deco('polaroid', 28.3, 37.6, 7.4, 'rotate(5deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
+    deco('polaroid', 29.7, 41.6, 6.4, 'rotate(3deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
     deco('corazon', 29.2, 57, 7, 'rotate(-7deg)', 'Dato de medicina para el ENEM', medFact),
     deco('sello', 66, 72, 9.6, 'rotate(-8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     portada(),
@@ -115,7 +116,7 @@ export async function renderHome(app, go0) {
   const cover = h('div', { class: 'ag-cover init', 'aria-hidden': 'true' },
     h('div', { class: 'agc-front' }, h('span', { class: 'agc-strap' }), h('span', { class: 'agc-name' }, 'Loona'), h('span', { class: 'agc-moon' }), h('span', { class: 'agc-hint' }, 'Toca para abrir')),
     h('div', { class: 'agc-back' }));
-  scene.append(h('div', { class: 'ag-desk', 'aria-hidden': 'true' }), h('img', { class: 'ag-dije-out', src: 'img/dije-fuera.webp', alt: '', draggable: false }), cover);
+  scene.append(h('div', { class: 'ag-desk', 'aria-hidden': 'true' }), h('img', { class: 'ag-dije-out', src: 'img/dije-real.webp', alt: '', draggable: false }), cover);
   cover.addEventListener('click', () => openAgenda());
   // tarjeta «Plan de hoy»: capítulos que tocan hoy y preguntas para repasar
   Promise.all([import('./plan.js').then(m => m.todayPlan()), import('./errors.js').then(m => m.errorsSummary())]).then(([t, e]) => {

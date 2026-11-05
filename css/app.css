@@ -2050,3 +2050,27 @@ html.lite .sum.tpl-lamina .lam-big { animation: none !important; }
 .plan-ahead.hot { border-color: #D4202C; border-style: solid; box-shadow: 0 0 18px rgba(212,32,44,.2); }
 .plan-pace { margin: 0; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.04); font-weight: 600; }
 .plan-pace.up { color: #5fd39c; } .plan-pace.down { color: #ffb4b8; }
+
+/* ============ v107: agenda cerrada en formato A5 (centrada) y dije realista que se mece ============ */
+.agenda .ag-cover { width: 33.2% !important; transition: translate .9s cubic-bezier(.65,.05,.25,1); }
+.agenda.closed .ag-cover { translate: -13.4cqw 0; }
+.agenda::after { content: ''; position: absolute; top: 0; right: 0; width: 34%; height: 100%; z-index: 5; pointer-events: none; opacity: 0;
+  background: radial-gradient(120% 100% at 20% 50%, #1b1a1b, #121112 70%); transition: opacity .35s ease .45s; }
+.agenda.closed::after { opacity: 1; transition-delay: 0s; }
+.agenda.closed .ag-desk { width: 66.5%; }
+.ag-dije-out { left: 31.2% !important; top: 18% !important; width: 4.6% !important; transform-origin: 50% 3% !important; translate: 0 0; transition: translate .9s cubic-bezier(.65,.05,.25,1);
+  filter: drop-shadow(.35cqw .7cqw .45cqw rgba(0,0,0,.75)) drop-shadow(0 0 .2cqw rgba(0,0,0,.5)) !important; }
+.agenda.closed .ag-dije-out { animation: dijeSway 6.5s ease-in-out infinite !important; transform: rotate(3deg); }
+@keyframes dijeSway { 0%, 100% { transform: rotate(3.5deg); } 50% { transform: rotate(-2.5deg); } }
+.agenda:not(.closed) .ag-dije-out { translate: 13.4cqw 0; }
+@media (prefers-reduced-motion: reduce) { .agenda.closed .ag-dije-out { animation: none !important; } }
+.ag-dije-in { position: absolute; left: 41.9%; top: 35.2%; width: 7.4%; height: auto; z-index: 3; pointer-events: none; transform-origin: 50% 2.5%; transform: rotate(14deg);
+  filter: drop-shadow(.5cqw .9cqw .5cqw rgba(0,0,0,.8)) drop-shadow(0 0 .25cqw rgba(0,0,0,.6)); animation: dijeIn 7s ease-in-out infinite; }
+@keyframes dijeIn { 0%, 100% { transform: rotate(14deg); } 50% { transform: rotate(10.5deg); } }
+.agenda.closed .ag-dije-in { visibility: hidden; }
+html.lite .ag-dije-in, html.lite .agenda.closed .ag-dije-out { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .ag-dije-in { animation: none; } }
+/* realismo: sombras de contacto suaves en todo lo que está "apoyado" sobre la agenda */
+.ag-deco img, .ag-deco { filter: drop-shadow(.25cqw .45cqw .35cqw rgba(0,0,0,.55)) drop-shadow(0 .05cqw .08cqw rgba(0,0,0,.6)); }
+.ag-card { box-shadow: 0 .35cqw .6cqw -.15cqw rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.25) !important; }
+.ag-note { box-shadow: .3cqw .6cqw 1cqw -.2cqw rgba(0,0,0,.75) !important; }

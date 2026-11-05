@@ -190,3 +190,8 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - Ritmo diario fijo: lo que adelantas no aligera los días siguientes, hace que termines antes y ganes semanas de repaso; si te atrasas, se reparte solo.
 - «¿Sigues? Adelanta»: al terminar el plan de hoy aparecen las próximas unidades (+25 XP extra cada una, logro «Adelantada»).
 - Indicador «Vas N días adelantada/atrasada» y fecha en que terminas el contenido.
+
+## v107 — Agenda A5 y dijes realistas
+- La agenda cerrada tiene proporción A5 (148 × 210) y queda centrada; al abrirla se desliza a su lugar.
+- Dije realista nuevo (`img/dije-real.webp`) por fuera de la tapa y dentro de la agenda, colgado de la argolla y meciéndose; se quitó el dije viejo de la foto.
+- Polaroid ya no tapa la nota «XOXO, Loona»; sombras de contacto suaves en tarjetas, notas y adornos.
