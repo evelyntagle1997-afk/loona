@@ -2119,3 +2119,8 @@ html.lite .ag-dije-in, html.lite .agenda.closed .ag-dije-out { animation: none !
 .loona-set { border-top: 1px solid #2a2a2e; margin-top: 14px; padding-top: 6px; display: flex; flex-direction: column; gap: 4px; }
 .loona-set h3 { margin: 4px 0; font-family: 'Pacifico', cursive; font-weight: 400; }
 @media (prefers-reduced-motion: reduce) { .lv-ring, .loona-voice.live { animation: none; } }
+/* v112: la luna sola indica que Loona te escucha */
+#loona-fab.talking { box-shadow: 0 0 0 2px #D4202C, 0 0 22px rgba(212,32,44,.7), 0 6px 14px rgba(0,0,0,.6) !important; color: #fff !important; }
+#loona-fab.talking.live { animation: fabListen 1.3s ease-in-out infinite; }
+@keyframes fabListen { 50% { box-shadow: 0 0 0 3px #D4202C, 0 0 36px rgba(212,32,44,.95), 0 6px 14px rgba(0,0,0,.6); transform: scale(1.07); } }
+@media (prefers-reduced-motion: reduce) { #loona-fab.talking.live { animation: none; } }

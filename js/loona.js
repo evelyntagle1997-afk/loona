@@ -381,7 +381,7 @@ function startCall(btn, heard) {
       silences = 0; setTimeout(() => call && hearTurn(btn, heard), 250);
     },
   };
-  btn.classList.add('oncall'); if (!btn.classList.contains('loona-voice')) btn.innerHTML = icon('close', 18) + 'Colgar';
+  btn.classList.add('oncall'); if (!btn.classList.contains('loona-voice') && btn.id !== 'loona-fab') btn.innerHTML = icon('close', 18) + 'Colgar';
   const hr = new Date().getHours();
   speak(['Aquí estoy, Eve. Dime.', 'Te escucho.', hr >= 19 ? 'Hola, Eve. ¿Qué necesitas esta noche?' : 'Aquí estoy, Eve.'][Math.floor(Math.random() * 3)])
     .then(() => call && hearTurn(btn, heard));
@@ -389,7 +389,7 @@ function startCall(btn, heard) {
 function endCall(msg) {
   const c = call; call = null; if (!c) return;
   recNow?.stop();
-  c.btn.classList.remove('oncall', 'live'); if (!c.btn.classList.contains('loona-voice')) c.btn.innerHTML = icon('mic', 18) + 'Conversar';
+  c.btn.classList.remove('oncall', 'live'); if (!c.btn.classList.contains('loona-voice') && c.btn.id !== 'loona-fab') c.btn.innerHTML = icon('mic', 18) + 'Conversar';
   if (msg) speak(msg);
 }
 
@@ -451,17 +451,15 @@ function hfRow() {
   return h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Sin tocar nada:'), b);
 }
 export function callLoona() { if (!panel) toggle(); }
-// la luna: solo voz. Un toque = Loona te escucha; otro toque = cuelga. Sin botones ni ajustes aquí.
+// la luna: solo voz. Un toque = Loona te escucha (la luna brilla); otro toque = cuelga. Sin ventanas ni botones.
 function toggle() {
-  if (panel) { endCall(); import('./live.js').then(L => L.stopLive()); panel.remove(); panel = null; return; }
-  const heard = h('p', { class: 'loona-heard' }, 'Te escucho…');
-  const mic = h('button', { class: 'loona-voice', 'aria-label': 'Colgar', html: icon('mic', 30) });
-  mic.addEventListener('click', () => toggle());
-  panel = h('div', { class: 'loona-panel loona-voicebox', role: 'dialog', 'aria-label': 'Hablando con Loona' }, h('span', { class: 'lv-ring' }), mic, heard, h('small', { class: 'lv-hint' }, 'Toca para colgar'));
-  document.body.append(panel);
-  // cuando la conversación termina sola (te despides o pones música), la ventanita se cierra
-  const watch = setInterval(() => { if (!panel) return clearInterval(watch); if (!call && !recNow && !isBusy()) { clearInterval(watch); setTimeout(() => { if (panel && !call) { panel.remove(); panel = null; } }, 1200); } }, 700);
-  startCall(mic, heard);
+  const fab = document.getElementById('loona-fab');
+  if (panel) { endCall(); import('./live.js').then(L => L.stopLive()); panel = null; fab?.classList.remove('talking', 'live', 'oncall'); return; }
+  const heard = h('p');   // lo que oyó no se muestra (solo voz)
+  panel = { heard }; fab?.classList.add('talking');
+  // cuando la conversación termina sola (te despides o pones música), la luna vuelve a su estado normal
+  const watch = setInterval(() => { if (!panel) return clearInterval(watch); if (!call && !recNow && !isBusy()) { clearInterval(watch); setTimeout(() => { if (panel && !call) { panel = null; fab?.classList.remove('talking', 'live', 'oncall'); } }, 1200); } }, 700);
+  startCall(fab || h('button'), heard);
 }
 // ajustes de Loona (van en Ajustes → IA, no en la luna)
 export function loonaSettings() {
