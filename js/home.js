@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 109;
+export const APP_VERSION = 110;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -539,6 +539,7 @@ export async function settings(tab = 'nube') {
       h('div', { class: 'ie-row' }, h('button', { class: 'btn primary', onclick: async () => { await db.saveSettings({ geminiKey: key.value.trim(), geminiModel: model.value.trim() || 'gemini-3.8-flash', aiAuto: auto.checked }); toast('Ajustes de IA guardados'); m.close(); } }, 'Guardar'),
         h('button', { class: 'btn', onclick: async e => { const b = e.currentTarget; b.textContent = 'Probando…'; b.textContent = await testKey(key.value.trim(), model.value.trim()); } }, 'Probar clave')),
     );
+    import('./loona.js').then(L => body.append(L.loonaSettings()));
   } else if (tab === 'fuentes') {
     const list = h('ul', { class: 'font-own' }, ...(await db.all('font')).map(f => h('li', { style: { fontFamily: `'${f.family}'` } }, f.family)));
     body.append(

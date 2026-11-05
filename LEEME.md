@@ -203,3 +203,7 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - «Conversar» usa primero el dictado del celular/PC (gratis): «pon música», «pausa», «siguiente»… funcionan aunque Gemini esté en su límite; al poner música la conversación se cierra sola. La llamada en vivo queda opcional (`localStorage.loonaLive = '1'`).
 - Personalidad estilo Loona Moon (gótica, tranquila, humor seco) pero siempre respetuosa: sin groserías, quejas ni burlas.
 - Al pasar de página en el cuaderno o el PDF gira una hoja de papel vegetal; páginas con grano y bordes de hojas apiladas; láminas de IA pegadas con cinta.
+
+## v110 — La luna es solo voz
+- Tocar la luna (o el ámbar) abre una ventanita con un micrófono: Loona te escucha al instante; tocarla otra vez cuelga. Se cierra sola al despedirte o al poner música.
+- Los ajustes de Loona (nombre, voz, meta diaria, empujones, manos libres, memoria) se movieron a Ajustes → IA.

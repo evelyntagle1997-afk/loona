@@ -358,7 +358,7 @@ function srOnce(heard) {
 // una vuelta de la conversación: gratis si se puede; si no, con el audio a Gemini
 async function hearTurn(btn, heard) {
   if (true) {   // primero el dictado del navegador: «pon música», «pausa»… funcionan aunque Gemini esté en su límite
-    const t = await srOnce(heard);
+    btn.classList.add('live'); const t = await srOnce(heard); btn.classList.remove('live');
     if (t === '') return call?.next('silence');
     if (t) { heard.textContent = '«' + t + '»'; const r = await talk(t); return call?.next(r); }
   }
@@ -381,7 +381,7 @@ function startCall(btn, heard) {
       silences = 0; setTimeout(() => call && hearTurn(btn, heard), 250);
     },
   };
-  btn.classList.add('oncall'); btn.innerHTML = icon('close', 18) + 'Colgar';
+  btn.classList.add('oncall'); if (!btn.classList.contains('loona-voice')) btn.innerHTML = icon('close', 18) + 'Colgar';
   const hr = new Date().getHours();
   speak(['Aquí estoy, Eve. Dime.', 'Te escucho.', hr >= 19 ? 'Hola, Eve. ¿Qué necesitas esta noche?' : 'Aquí estoy, Eve.'][Math.floor(Math.random() * 3)])
     .then(() => call && hearTurn(btn, heard));
@@ -389,7 +389,7 @@ function startCall(btn, heard) {
 function endCall(msg) {
   const c = call; call = null; if (!c) return;
   recNow?.stop();
-  c.btn.classList.remove('oncall', 'live'); c.btn.innerHTML = icon('mic', 18) + 'Conversar';
+  c.btn.classList.remove('oncall', 'live'); if (!c.btn.classList.contains('loona-voice')) c.btn.innerHTML = icon('mic', 18) + 'Conversar';
   if (msg) speak(msg);
 }
 
@@ -450,53 +450,33 @@ function hfRow() {
   import('./handsfree.js').then(paint);
   return h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Sin tocar nada:'), b);
 }
-export function callLoona() {
-  if (!panel) toggle();
-  const b = panel?.querySelector('.btn.primary'); if (b && !b.classList.contains('oncall')) b.click();
-}
+export function callLoona() { if (!panel) toggle(); }
+// la luna: solo voz. Un toque = Loona te escucha; otro toque = cuelga. Sin botones ni ajustes aquí.
 function toggle() {
   if (panel) { endCall(); import('./live.js').then(L => L.stopLive()); panel.remove(); panel = null; return; }
-  const heard = h('p', { class: 'loona-heard' });
-  const inp = h('input', { class: 'field', type: 'text', placeholder: 'Escríbele a Loona…', 'aria-label': 'Escríbele a Loona' });
-  const send = () => { const v = inp.value.trim(); if (!v) return; heard.textContent = '«' + v + '»'; inp.value = ''; talk(v); };
-  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
-  const mic = h('button', { class: 'btn primary', html: icon('mic', 18) + 'Conversar', title: 'Conversación por voz: hablas, ella responde y te vuelve a escuchar' });
-  mic.addEventListener('click', async () => {
-    if (!(await db.settings()).geminiKey) return listen(mic, heard);
-    const L = await import('./live.js');
-    if (L.active()) return L.stopLive();
-    if (call) return endCall();
-    let live = false; try { live = localStorage.getItem('loonaLive') === '1'; } catch { }
-    if (!live) return startCall(mic, heard);   // conversación por turnos (más fiable); la llamada en vivo es opcional
-    // primero la llamada en vivo (se escuchan mutuamente); si no se puede, la conversación por turnos
-    mic.innerHTML = icon('mic', 18) + 'Conectando…';
-    const off = L.onState(st => {
-      if (st.on === true) { mic.classList.add('oncall'); mic.innerHTML = icon('close', 18) + 'Colgar'; heard.textContent = 'En vivo: habla cuando quieras'; }
-      if (st.heard) heard.textContent = '«' + st.heard.trim() + '»';
-      if (st.said) bubble(st.said.trim());
-      if (st.on === false) { off(); mic.classList.remove('oncall'); mic.innerHTML = icon('mic', 18) + 'Conversar'; heard.textContent = ''; }
-    });
-    const r = await L.tryLive();
-    if (r !== true) { off(); mic.innerHTML = icon('mic', 18) + 'Conversar'; if (r === false) startCall(mic, heard); }
-  });
-  const vsel = h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Voz:'), ...[['ia', 'Su voz'], ['off', 'Solo texto']].map(([k, n]) =>
-    h('button', { class: 'chip' + (voiceMode() === k ? ' on' : ''), onclick: e => { setVoiceMode(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n)));
-  panel = h('div', { class: 'loona-panel leather-panel', role: 'dialog', 'aria-label': 'Loona' },
-    h('div', { class: 'loona-head' }, h('b', {}, 'Loona'), h('button', { class: 'icbtn', 'aria-label': 'Cerrar', html: icon('close', 18), onclick: toggle })),
-    heard, h('div', { class: 'ie-row' }, mic, inp, h('button', { class: 'chip', onclick: send }, 'Enviar')), vsel, hfRow(),
-    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Mi nombre suena:'), ...[['iv', '«Iv»'], ['eve', '«É-ve»'], ['evelin', '«Évelin»']].map(([k, n]) =>
-      h('button', { class: 'chip' + (nameMode() === k ? ' on' : ''), onclick: e => { try { localStorage.setItem('loonaNombre', k); } catch { } e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); speak('Hola, Eve.'); } }, n))),
+  const heard = h('p', { class: 'loona-heard' }, 'Te escucho…');
+  const mic = h('button', { class: 'loona-voice', 'aria-label': 'Colgar', html: icon('mic', 30) });
+  mic.addEventListener('click', () => toggle());
+  panel = h('div', { class: 'loona-panel loona-voicebox', role: 'dialog', 'aria-label': 'Hablando con Loona' }, h('span', { class: 'lv-ring' }), mic, heard, h('small', { class: 'lv-hint' }, 'Toca para colgar'));
+  document.body.append(panel);
+  // cuando la conversación termina sola (te despides o pones música), la ventanita se cierra
+  const watch = setInterval(() => { if (!panel) return clearInterval(watch); if (!call && !recNow && !isBusy()) { clearInterval(watch); setTimeout(() => { if (panel && !call) { panel.remove(); panel = null; } }, 1200); } }, 700);
+  startCall(mic, heard);
+}
+// ajustes de Loona (van en Ajustes → IA, no en la luna)
+export function loonaSettings() {
+  const row = (label, opts, cur, set) => h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, label), ...opts.map(([k, n]) =>
+    h('button', { class: 'chip' + (cur() === k ? ' on' : ''), onclick: e => { set(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n)));
+  return h('div', { class: 'loona-set' }, h('h3', {}, 'Loona'),
+    row('Mi nombre suena:', [['iv', '«Iv»'], ['eve', '«É-ve»'], ['evelin', '«Évelin»']], nameMode, k => { try { localStorage.setItem('loonaNombre', k); } catch { } speak('Hola, Eve.'); }),
+    row('Su voz:', [['ia', 'Con voz'], ['off', 'Solo texto']], voiceMode, setVoiceMode),
+    row('Si se acaba su voz de Google:', [['1', 'Voz del celular'], ['0', 'Solo texto']], () => backupVoice() ? '1' : '0', k => { try { localStorage.setItem('loonaBackupVoice', k); } catch { } }),
+    row('Me empuja a estudiar:', [[true, 'Sí'], [false, 'No']], coachOn, setCoach),
+    row('Meta diaria:', [[60, '1 h'], [120, '2 h'], [180, '3 h'], [240, '4 h'], [360, '6 h']], goal, setGoal),
+    hfRow(),
     h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Memoria:'),
       h('button', { class: 'chip', onclick: async () => { const m = await memoryText(); bubble(m ? 'Lo que recuerdo de nosotras:\n' + m.slice(0, 600) : 'Todavía no me acuerdo de nada. Cuéntame de ti cuando quieras.'); } }, 'Qué recuerdas'),
-      h('button', { class: 'chip', onclick: async e => { if (e.target.dataset.ok) { await forget(); e.target.textContent = 'Memoria borrada'; } else { e.target.dataset.ok = 1; e.target.textContent = 'Toca otra vez para borrar'; } } }, 'Borrar memoria')),
-    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Si se acaba su voz de Google:'), ...[['1', 'Voz del celular'], ['0', 'Solo texto']].map(([k, n]) =>
-      h('button', { class: 'chip' + ((backupVoice() ? '1' : '0') === k ? ' on' : ''), onclick: e => { try { localStorage.setItem('loonaBackupVoice', k); } catch { } e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n))),
-    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, statsLine() + ' ·'),
-      h('button', { class: 'chip' + (coachOn() ? ' on' : ''), onclick: e => { setCoach(!coachOn()); e.target.classList.toggle('on', coachOn()); e.target.textContent = coachOn() ? 'Me empuja a estudiar: sí' : 'Me empuja a estudiar: no'; } }, coachOn() ? 'Me empuja a estudiar: sí' : 'Me empuja a estudiar: no')),
-    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Meta diaria:'), ...[[60, '1 h'], [120, '2 h'], [180, '3 h'], [240, '4 h'], [360, '6 h']].map(([m, n]) =>
-      h('button', { class: 'chip' + (goal() === m ? ' on' : ''), onclick: e => { setGoal(m); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n))),
-    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Gasto:'), h('button', { class: 'chip' + (ahorro() ? ' on' : ''), onclick: e => { setAhorro(!ahorro()); e.target.classList.toggle('on', ahorro()); e.target.textContent = ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'; } }, ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no')));
-  document.body.append(panel);
+      h('button', { class: 'chip', onclick: async e => { if (e.target.dataset.ok) { await forget(); e.target.textContent = 'Memoria borrada'; } else { e.target.dataset.ok = 1; e.target.textContent = 'Toca otra vez para borrar'; } } }, 'Borrar memoria')));
 }
 async function listen(btn, heard) {
   // Con clave de Gemini: grabo tu voz y Gemini la entiende (más fiable que el dictado del navegador)
