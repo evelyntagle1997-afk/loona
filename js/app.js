@@ -54,7 +54,16 @@ db.onChange((rec, origin) => {
   if (origin === 'remote' && rec.kind === 'font') loadCustomFonts();
 });
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(() => { });
+// actualización automática: si hay una versión nueva, se instala y la app se recarga sola (sin Ctrl+Shift+R)
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const hadCtrl = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadCtrl || reloaded) return; reloaded = true; location.reload(); });
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
+    reg.update().catch(() => { });
+    setInterval(() => reg.update().catch(() => { }), 20 * 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => { }); });
+  }).catch(() => { });
+}
 if (navigator.storage?.persist) navigator.storage.persist();
 
 import('./home.js').then(m => m.pomoTick?.());
