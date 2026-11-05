@@ -2294,3 +2294,27 @@ html.lite .ag-dije-in, html.lite .agenda.closed .ag-dije-out { animation: none !
 .sum.tpl-lamina .lam-note.rec > b { padding: 10px 12px 2px; margin: 8px 8px 0 !important; border-radius: 3px 3px 0 0; }
 .sum.tpl-lamina .lam-note.rec > p { padding: 2px 12px 10px; margin: 0 8px 8px !important; border-radius: 0 0 3px 3px; }
 .agc-hint { background: none !important; }
+
+/* ============ v118: vaca gótica en MARRÓN — chocolate profundo en vez de negro ============ */
+:root { --g-bg: #1f130d; --g-bg2: #2a1a12; --g-card: #2e1e16; --g-line: #55392a; --g-tx: #F1E6D6; --g-tx2: #C4A88C; --choc: #3b2418; }
+.home.ag-home { background: radial-gradient(70% 60% at 50% 45%, transparent 35%, rgba(20,10,6,.7) 100%), linear-gradient(160deg, #3a2318, #160c08) !important; }
+.agc-front { background: radial-gradient(120% 90% at 30% 20%, rgba(255,214,170,.14), transparent 55%), linear-gradient(90deg, rgba(0,0,0,.45), transparent 9%), linear-gradient(#5a3624, #3b2418), url(../img/cuero.jpg) center / 384px !important; background-blend-mode: normal, normal, multiply, normal !important; }
+.agc-front { border: 1px solid #22140d; }
+.agc-name { color: #F1E6D6 !important; -webkit-text-fill-color: #F1E6D6 !important; text-shadow: 0 1px 0 #1a0e08, 0 0 14px rgba(20,10,6,.9) !important; }
+.agc-strap, .agc-front .agc-strap { background: linear-gradient(180deg, #5a3624, #2a170e) !important; }
+.ag-desk, .agenda::after { background: radial-gradient(120% 100% at 70% 50%, #3a2318, #160c08 70%) !important; }
+.ag-tabl { background: linear-gradient(180deg, #5a3624, #2e1a11) !important; color: #E9D8C2 !important; }
+#loona-fab, .loona-fab { box-shadow: 0 0 0 2px #8a5a3c, 0 6px 14px rgba(20,10,6,.7) !important; }
+.modal { background: linear-gradient(180deg, #2e1d14, #1c110c) !important; }
+.modal .field { background: #1a100b !important; } .modal .btn, .modal .chip { background: #3b2418 !important; }
+.toast { background: #1c110c !important; }
+.game-hud { background: linear-gradient(180deg, #3b2418, #1f130d) !important; }
+.loona-say { background: #2a1a12 !important; }
+.ag-note, .ag-note.ag-hot { background: linear-gradient(rgba(42,26,18,.95), rgba(42,26,18,.95)) center / 86% 82% no-repeat, var(--vaca) 10% 20% / 260px, #2a1a12 !important; }
+.sum.tpl-lamina { background: linear-gradient(180deg, rgba(31,19,13,.05) 0, rgba(31,19,13,.35) 90px, rgba(31,19,13,.93) 135px, #1f130d 160px), var(--vaca) 0 0 / 380px repeat-x, #1f130d !important; }
+.sum.tpl-lamina .sum-title { -webkit-text-stroke: .14em #1f130d !important; }
+.sum.tpl-lamina .lam-fig { background: #160c08 !important; }
+.sum.tpl-lamina .lam-tab th { background: #160c08 !important; } .sum.tpl-lamina .lam-tab tr:nth-child(even) td { background: #26170f !important; }
+.sum.tpl-lamina .lam-note.rec > * { background: rgba(31,19,13,.93); }
+.errv-day, .quiz-alt { background: #1a100b !important; }
+.agc-front { background: radial-gradient(120% 90% at 30% 20%, rgba(255,214,170,.16), transparent 55%), linear-gradient(90deg, rgba(0,0,0,.4), transparent 9%), url(../img/cuero.jpg) center / 384px, linear-gradient(160deg, #6b4129, #3d2418 70%, #2a170f) !important; background-blend-mode: normal, normal, soft-light, normal !important; }
