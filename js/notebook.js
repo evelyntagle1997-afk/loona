@@ -1035,12 +1035,12 @@ export class Notebook {
     const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.innerText.trim(); };
     const ta = h('textarea', { class: 'field tf-text', rows: 5, placeholder: 'Escribe o pega aquí lo que quieres transformar (o selecciona un texto del cuaderno antes de abrir esto).' }, selEl ? plain(selEl.html) : '');
     const title = h('input', { class: 'field', placeholder: 'Título (opcional)' });
-    let tpl = 'ola', theme = themeOf(this.subject?.name), items = null, aiTitle = '';
+    let tpl = 'lamina', theme = themeOf(this.subject?.name), items = null, aiTitle = '', lamina = null;
     const preview = h('div', { class: 'tf-prev' });
     const local = () => (ta.value.split(/(?<=[.!?;])\s+|\n+/).map(x => x.trim()).filter(x => x.length > 3).slice(0, 18))
       .map((t, i) => { const cat = classify(t, 2); return { hl: 'tf' + i, cat, level: 2, text: condense(t, cat, 22) }; });
     const draw = () => {
-      const el = { type: 'summary', title: title.value.trim() || aiTitle || 'Mi tema', items: items || local(), layout: 'dos', tpl, theme };
+      const el = { type: 'summary', title: title.value.trim() || aiTitle || 'Mi tema', items: items || local(), layout: 'dos', tpl, theme, lamina, nopop: true };
       const d = this.summaryDom(null, el); d.classList.add('tf-mini'); preview.replaceChildren(d);
     };
     const pick = (opts, cur, set) => h('div', { class: 'tf-opts' }, ...opts.map(([k, name]) => h('button', { class: 'chip' + (k === cur ? ' on' : ''), onclick: e => { set(k); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); draw(); } }, name)));
@@ -1051,21 +1051,21 @@ export class Notebook {
       if (!ta.value.trim()) return ta.focus();
       aiBtn.textContent = 'Ordenando…';
       try { const r = await aiSummarize({ key: s.geminiKey, model: s.geminiModel, title: title.value.trim() || 'Tema', texts: [{ text: ta.value, level: 2 }], subject: this.subject?.name });
-        aiTitle = r.titulo || ''; items = (r.items || []).map((it, i) => ({ hl: 'tf' + i, cat: CATS.some(c => c.k === it.cat) ? it.cat : 'ideas', level: clamp(+it.level || 2, 1, 5), text: it.text }));
+        aiTitle = r.titulo || ''; lamina = r.lamina || null; items = (r.items || []).map((it, i) => ({ hl: 'tf' + i, cat: CATS.some(c => c.k === it.cat) ? it.cat : 'ideas', level: clamp(+it.level || 2, 1, 5), text: it.text }));
         draw(); } catch (e) { toast(e.message, 4000); }
       aiBtn.textContent = 'Ordenar con IA';
     } }, 'Ordenar con IA');
     draw();
     modal({ title: 'Transformar con plantilla', wide: true, body: h('div', { class: 'tf' },
       h('div', { class: 'tf-side' }, ta, title,
-        h('p', { class: 'opt-hint' }, 'Cómo se ve'), pick([['ola', 'Ola azul (modelo)'], ['mapa', 'Mapa conceptual'], ['poster', 'Póster']], tpl, v => tpl = v),
+        h('p', { class: 'opt-hint' }, 'Cómo se ve'), pick([['lamina', 'Lámina ilustrada'], ['ola', 'Ola azul'], ['mapa', 'Mapa conceptual'], ['poster', 'Póster']], tpl, v => tpl = v),
         h('p', { class: 'opt-hint' }, 'Ilustraciones'), pick([['bio', 'Biología'], ['quim', 'Química'], ['gen', 'Luna y polillas']], theme, v => theme = v),
         aiBtn),
       h('div', { class: 'tf-right' }, h('p', { class: 'opt-hint' }, 'Vista previa (así quedará en tu hoja)'), preview)),
       actions: [{ label: 'Cancelar' }, { label: 'Ponerlo en mi hoja', primary: true, onclick: () => {
         if (!ta.value.trim()) { toast('Escribe algo primero'); return false; }
         const pg = this.pages[this.curPageIndex()]; if (!pg) return;
-        this.addEl(pg, { type: 'summary', id: db.uid('sum_'), topic: db.uid('tf_'), title: title.value.trim() || aiTitle || 'Mi tema', items: items || local(), layout: 'dos', tpl, theme, x: 40, y: 50, w: PW - 80, h: 0, rot: 0 }, { select: true });
+        this.addEl(pg, { type: 'summary', id: db.uid('sum_'), topic: db.uid('tf_'), title: title.value.trim() || aiTitle || 'Mi tema', items: items || local(), layout: 'dos', tpl, theme, lamina, x: 40, y: 50, w: PW - 80, h: 0, rot: 0 }, { select: true });
         if (selEl) { pg.els = pg.els.filter(e => e !== selEl); this.renderEls(pg); this.commit(pg); }
         toast('Listo: tu página con estilo');
       } }] });
@@ -1226,10 +1226,13 @@ export class Notebook {
 
   summaryDom(pg, el) {
     // modelo por defecto: «ola» (hoja negra, olas azules, título en letras de burbuja); los otros siguen disponibles
-    const tpl = el.tpl && el.tpl !== 'diario' ? el.tpl : 'ola', theme = el.theme || themeOf(this.subject?.name);
-    const ola = tpl === 'ola';
-    const root = h('div', { class: 'sum lay-' + (el.layout || 'dos') + ' tpl-' + tpl + ' th-' + theme });
+    // modelo por defecto: «lámina» ilustrada según el tema (plata, blanco y rojo sobre negro); «ola», mapa y póster siguen disponibles
+    const tpl = el.tpl && el.tpl !== 'diario' ? el.tpl : 'lamina', theme = el.theme || themeOf(this.subject?.name);
+    const ola = tpl === 'ola', lam = tpl === 'lamina';
+    const lt = lam ? lamTheme(el, this.subject?.name) : '';
+    const root = h('div', { class: 'sum lay-' + (el.layout || 'dos') + ' tpl-' + tpl + ' th-' + theme + (lam ? ' lt-' + lt : '') });
     if (ola) root.append(h('img', { class: 'ola-top', src: 'img/ola-top.webp', alt: '', draggable: false, 'aria-hidden': 'true' }));
+    else if (lam) root.append(h('img', { class: 'lam-top', src: 'img/lam-' + lt + '-top.webp', alt: '', draggable: false, 'aria-hidden': 'true' }));
     else {
       root.append(h('i', { class: 'sum-strip l', 'aria-hidden': 'true' }));
       if (tpl === 'poster') root.append(h('i', { class: 'sum-strip r', 'aria-hidden': 'true' }));
@@ -1238,10 +1241,10 @@ export class Notebook {
     const sub = this.subject;
     root.style.setProperty('--sc', sub?.coverColor || '#7A2B3A');
     root.style.setProperty('--neo', el.theme ? NEON_TH[el.theme] : neonOf(sub?.name));   // brillo neón: plata por defecto; color solo si el tema lo pide
-    const tf = el.titleFont || (ola ? 'Pacifico' : this.nb.titleFont || 'Grenze Gotisch'); ensureFont(tf); if (ola) ensureFont('Kalam');
+    const tf = el.titleFont || (ola || lam ? 'Pacifico' : this.nb.titleFont || 'Grenze Gotisch'); ensureFont(tf); if (ola || lam) ensureFont('Kalam');
     if (!el.cont && el.title) {
       // título: máximo ~5 cm de alto (270 px de hoja); se achica solo y lo puedes ajustar deslizando la esquina
-      const MAXH = ola ? 150 : 270, base = ola ? 58 : 46;
+      const MAXH = ola || lam ? 150 : 270, base = ola || lam ? 58 : 46;
       const t = h('div', { class: 'sum-title', 'data-edit': 'title' }, el.title);
       t.style.fontFamily = `'${tf}', 'Pirata One', serif`;
       const setK = k => { t.style.setProperty('font-size', Math.round(base * k) + 'px', 'important'); };
@@ -1262,6 +1265,7 @@ export class Notebook {
       }
     }
     else if (el.cont && el.title) root.append(h('div', { class: 'sum-cont' }, el.title + ' (continúa)'));
+    if (lam) { lamBody(root, el, lt, this.subject?.name); return root; }
     const body = h('div', { class: 'sum-body' });
     for (const g of grouped(el.items)) {
       body.append(h('section', { class: 'sum-sec cat-' + g.k },
@@ -1318,6 +1322,7 @@ export class Notebook {
       const seen = new Set(); first.el.items.forEach(it => { while (seen.has(it.hl)) it.hl += '+'; seen.add(it.hl); });
       first.el.ai = { explicacion: r.explicacion, analogia: r.analogia, mnemotecnia: r.mnemotecnia, preguntas: r.preguntas || [], model: r.model };
       first.el.stickerHint = (r.stickers || []).join(' ');
+      if (r.lamina) first.el.lamina = r.lamina;
       this.renderEls(first.pg); this.commit(first.pg);
       if (manual) toast('Listo: resumen mejorado con IA');
     } catch (e) {
@@ -1373,3 +1378,78 @@ export function themeOf(name = '') {
 const NEON_TH = { bio: '#E9E9EC', quim: '#E9E9EC', gen: '#E9E9EC' };
 // en el modelo «ola» los subtítulos son preguntas, como en un cuaderno a mano
 const OLA_Q = { definicion: '¿Qué es?', caracteristicas: '¿Cómo es?', tipos: '¿Qué tipos hay?', funcion: '¿Para qué sirve?', como: '¿Cómo funciona?', cuando: '¿Cuándo?', donde: '¿Dónde?', quien: '¿Quién?', porque: '¿Por qué?', consecuencias: '¿Qué provoca?', datos: 'Datos clave', ejemplos: 'Ejemplos', ideas: 'Ideas clave' };
+
+// ---------- lámina ilustrada: arte según el tema + esquema numerado + tarjetas + tabla + notas ----------
+const LAM_THEMES = ['celula', 'genetica', 'corpo', 'plantas', 'quimica', 'fisica', 'mar'];
+function lamTheme(el, subject = '') {
+  const t = el.lamina?.tema_visual; if (LAM_THEMES.includes(t)) return t;
+  const n = ((el.title || '') + ' ' + subject).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (/celul|organel|citolog|membrana|mitocond|ribosom/.test(n)) return 'celula';
+  if (/genet|dna|adn|cromosom|hered|mendel|gen\b|genes|mutac/.test(n)) return 'genetica';
+  if (/coraz|sangu|anatom|fisiolog|organo|orgao|corpo|cuerpo|humano|neur|pulm|digest|sistema|hormon|inmun|imun/.test(n)) return 'corpo';
+  if (/planta|botan|fotosint|hoja|folha|flor|veget|semilla|raiz|ecolog/.test(n)) return 'plantas';
+  if (/quim|molecul|reacc|reac|acid|enlace|ligac|periodic|estequi|organica|solucion|ph\b/.test(n)) return 'quimica';
+  if (/fisic|energ|fuerza|forca|movim|onda|electr|eletr|optic|cinemat|termo|atomo|magnet/.test(n)) return 'fisica';
+  return 'mar';
+}
+const LAM_COL = { plata: '#C9CED6', rojo: '#D4202C', blanco: '#F5F5F5', azul: '#4C8DFF', verde: '#3FB27F', amarillo: '#E9C46A', morado: '#9B7BEA', naranja: '#F08A4B', rosa: '#E77AA8', celeste: '#5BC0EB', gris: '#9A9AA0' };
+const lamCol = c => LAM_COL[(c || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')] || '#C9CED6';
+// el SVG viene de la IA: se limpia (sin scripts, eventos ni enlaces externos)
+function cleanSvg(src) {
+  if (!src || !/<svg[\s>]/i.test(src)) return null;
+  try {
+    const d = new DOMParser().parseFromString(src.replace(/^[\s\S]*?(<svg)/i, '$1').replace(/(<\/svg>)[\s\S]*$/i, '$1'), 'image/svg+xml');
+    const svg = d.documentElement; if (!svg || svg.nodeName.toLowerCase() !== 'svg' || d.querySelector('parsererror')) return null;
+    svg.querySelectorAll('script,foreignObject,iframe,image,use[href^="http"],a').forEach(n => n.remove());
+    svg.querySelectorAll('*').forEach(n => [...n.attributes].forEach(a => { if (/^on/i.test(a.name) || (/href$/i.test(a.name) && !/^#/.test(a.value)) || /javascript:/i.test(a.value)) n.removeAttribute(a.name); }));
+    if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 400 300');
+    svg.removeAttribute('width'); svg.removeAttribute('height'); svg.setAttribute('class', 'lam-svg'); svg.setAttribute('role', 'img');
+    return document.importNode(svg, true);
+  } catch { return null; }
+}
+const popped = new Set();
+function lamBody(root, el, lt, subject) {
+  const L = el.lamina || {};
+  if (L.subtitulo) root.append(h('p', { class: 'lam-sub' }, L.subtitulo));
+  // tarjetas: las partes del esquema (con IA) o las categorías del resumen (sin IA)
+  let cards = (L.partes || []).filter(p => p && p.nombre).slice(0, 10).map((p, i) => ({ n: p.n || i + 1, name: p.nombre, color: lamCol(p.color), icon: p.icono || '', pts: (p.puntos || []).map(t => ({ html: fmtItem(t) })) }));
+  if (!cards.length) cards = grouped(el.items).map((g, i) => ({ n: i + 1, name: OLA_Q[g.k] || g.label, color: i % 3 === 1 ? '#D4202C' : '#C9CED6', icon: '', pts: g.list.map(it => ({ html: fmtItem(it.text), hl: it.hl })) }));
+  const card = c => h('div', { class: 'lam-card', style: { '--cc': c.color } },
+    h('div', { class: 'lam-ch' }, h('b', { class: 'lam-n' }, String(c.n)), c.icon && h('span', { class: 'lam-ic' }, c.icon), h('span', {}, c.name)),
+    h('ul', {}, ...c.pts.map(p => h('li', {}, h('span', { html: p.html, ...(p.hl ? { 'data-edit': 'item:' + p.hl } : {}) })))));
+  const svg = cleanSvg(L.svg);
+  if (svg) {
+    const half = Math.ceil(cards.length / 2);
+    // hoja de transición: papel vegetal con una ventana recortada sobre el esquema; al tocarla gira y lo descubre
+    const veil = h('button', { class: 'lam-veil', 'aria-label': 'Abrir la hoja y ver el esquema', onclick: e => { e.stopPropagation(); e.currentTarget.classList.toggle('open'); } },
+      h('span', { class: 'lam-veil-win' }), h('span', { class: 'lam-veil-tab' }, 'Abrir'));
+    root.append(h('div', { class: 'lam-grid' }, h('div', { class: 'lam-col' }, ...cards.slice(0, half).map(card)), h('figure', { class: 'lam-fig' }, svg, veil), h('div', { class: 'lam-col' }, ...cards.slice(half).map(card))));
+  } else root.append(h('div', { class: 'lam-cards' }, ...cards.map(card)));
+  if (!cards.length && !el.cont) root.append(h('p', { class: 'sum-empty' }, 'Subraya en el PDF y aquí aparece tu lámina.'));
+  const T = L.tabla;
+  if (T?.filas?.length) root.append(h('div', { class: 'lam-tabw' }, h('p', { class: 'lam-tt' }, T.titulo || 'Resumen'), h('table', { class: 'lam-tab' },
+    T.columnas?.length ? h('thead', {}, h('tr', {}, ...T.columnas.map(c => h('th', {}, c)))) : null,
+    h('tbody', {}, ...T.filas.slice(0, 8).map(r => h('tr', {}, ...r.map(c => h('td', { html: fmtItem(String(c)) }))))))));
+  // pie: la ilustración grande y las notas (la curiosidad viene en un sobre con sello de cera: tócalo para abrirlo)
+  const ai = el.ai || {};
+  const notes = h('div', { class: 'lam-notes' },
+    (L.recuerda || ai.mnemotecnia) && h('div', { class: 'lam-note rec' }, h('b', {}, L.recuerda ? 'Recuerda' : 'Truco para recordar'), h('p', {}, L.recuerda || ai.mnemotecnia)),
+    ai.explicacion && h('div', { class: 'lam-note' }, h('b', {}, 'En palabras simples'), h('p', { 'data-edit': 'ai:explicacion' }, ai.explicacion)),
+    L.curiosidad && h('button', { class: 'lam-env', onclick: e => { e.stopPropagation(); e.currentTarget.classList.toggle('open'); } }, h('span', { class: 'lam-flap' }), h('span', { class: 'lam-seal' }), h('span', { class: 'lam-letter' }, h('b', {}, '¿Sabías que…?'), L.curiosidad), h('small', { class: 'lam-envh' }, 'Curiosidad · toca el sello')),
+    L.tip && h('div', { class: 'lam-note tip' }, h('b', {}, 'Tip ENEM'), h('p', {}, L.tip)));
+  root.append(h('div', { class: 'lam-foot' }, h('img', { class: 'lam-big', src: 'img/lam-' + lt + '-big.webp', alt: '', draggable: false, 'aria-hidden': 'true' }), notes));
+  root.append(h('span', { class: 'ola-sign' }, 'XOXO, Loona · ' + (subject || 'apuntes')));
+  // objetos en 3D: la lámina se inclina un poco siguiendo tu dedo o el mouse (las ilustraciones flotan por delante)
+  if (!document.documentElement.classList.contains('lite')) {
+    let raf = 0;
+    root.addEventListener('pointermove', e => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; const r = root.getBoundingClientRect(); root.style.setProperty('--tx', ((e.clientX - r.left) / r.width - .5).toFixed(3)); root.style.setProperty('--ty', ((e.clientY - r.top) / r.height - .5).toFixed(3)); }); });
+    root.addEventListener('pointerleave', () => { root.style.setProperty('--tx', 0); root.style.setProperty('--ty', 0); });
+  }
+  // se abre como una tarjeta pop-up la primera vez que la ves
+  const key = el.id || el.title;
+  if (!el.nopop && !popped.has(key) && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    root.classList.add('lam-wait');
+    const io = new IntersectionObserver(ents => { if (ents.some(x => x.isIntersecting)) { io.disconnect(); popped.add(key); root.classList.remove('lam-wait'); root.classList.add('lam-pop'); setTimeout(() => root.classList.remove('lam-pop'), 2600); } }, { threshold: .15 });
+    requestAnimationFrame(() => io.observe(root));
+  }
+}

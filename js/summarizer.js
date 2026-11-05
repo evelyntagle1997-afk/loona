@@ -137,7 +137,22 @@ Devuelve SOLO JSON con esta forma:
  "analogia": "una analogía cotidiana que lo haga fácil de recordar",
  "mnemotecnia": "truco para memorizar (sigla, frase o rima); vacío si no aplica",
  "preguntas": [{"q": "pregunta de repaso", "a": "respuesta corta"}],
- "stickers": ["2 a 4 palabras clave del tema en español para elegir ilustraciones"]}
+ "stickers": ["2 a 4 palabras clave del tema en español para elegir ilustraciones"],
+ "lamina": {
+   "tema_visual": "la ilustración que mejor va con el tema: celula|genetica|corpo|plantas|quimica|fisica|mar",
+   "subtitulo": "una frase que diga de qué trata el tema (máx 12 palabras)",
+   "svg": "ESQUEMA DIDÁCTICO del tema en SVG (ver reglas)",
+   "partes": [{"n": 1, "nombre": "nombre de la parte o concepto", "color": "plata|rojo|blanco o, solo si identifica algo, azul|verde|amarillo|morado|naranja|rosa|celeste", "icono": "un emoji que lo represente", "puntos": ["1 a 3 apuntes telegráficos de máx 10 palabras"]}],
+   "recuerda": "lo más importante que no puede olvidar (1 frase)",
+   "curiosidad": "dato curioso real relacionado (1-2 frases)",
+   "tip": "consejo para estudiar o para el ENEM sobre este tema (1 frase)",
+   "tabla": {"titulo": "Resumen de …", "columnas": ["…", "…"], "filas": [["…", "…"]]}
+ }}
+LÁMINA ILUSTRADA (debe ser bonita y funcional, como un cuaderno de estudio de Pinterest):
+- "partes": de 4 a 8. Si el tema tiene partes físicas (célula, órgano, sistema, molécula, planta, aparato) cada parte es una estructura numerada del esquema. Si no (historia, procesos, fórmulas), son etapas, causas o conceptos clave en orden lógico.
+- PALETA BASE: negro, plata, blanco y rojo. Usa otro color SOLO para identificar elementos que el tema distingue por color (sangre arterial roja / venosa azul, cloroplastos verdes, indicadores químicos, espectro, átomos), nunca de adorno.
+- "svg": ilustración didáctica real del tema como dibujo de cuaderno sobre fondo negro: viewBox="0 0 400 300", formas simples y redondeadas, rellenos en grises plata (#3A3A3E, #6B6B72, #B9B9BE) con detalles rojos (#D4202C) y, si hace falta identificar algo, el color que corresponda; contornos blancos (#F5F5F5) de 2 px; fondo transparente. Debe mostrar el tema de verdad (la célula con sus organelos, el corazón con sus cavidades, el ciclo con flechas, la línea de tiempo, el gráfico…). Marca cada parte con un círculo negro con borde blanco y su número (el "n" de "partes") en <text> blanco, font-size 14, bold, centrado, unido a la parte con una línea fina blanca. Sin frases dentro del SVG (solo números o fórmulas de 1-3 caracteres). Sin <script>, sin imágenes, sin foreignObject. Máximo 4500 caracteres. Comillas simples dentro del SVG.
+- "tabla": 3 a 6 filas que resuman lo esencial (estructura → función, etapa → qué pasa, fecha → hecho).
 Reglas: LO MÁS CONCISO POSIBLE. Estilo apunte telegráfico: 'Concepto: idea clave', sin artículos ni relleno, máx 12 palabras por item; une fragmentos repetidos en un solo item; corrige errores de lectura (OCR) del texto escaneado. No inventes datos que no estén en los fragmentos salvo en explicacion/analogia (máx 2 frases cortas). Mantén el nivel de importancia que puso la estudiante. COLORES: el resumen va en hoja negra con letras blancas y azules (modelo «ola»), pero si un color es NECESARIO para entender (sangre arterial/venosa, indicadores químicos, colores de llamas, espectro, partes de un esquema que se distinguen por color), es obligatorio marcarlo así: [[rojo:sangre arterial]], [[azul:sangre venosa]] (colores: rojo, azul, verde, amarillo, morado, naranja, rosa, celeste, marron, gris). No uses color si no aporta a la explicación.`;
   const { cooled, coolDown, waitFrom } = await import('./quota.js');
   const models = [...new Set([model, 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'].filter(Boolean))];

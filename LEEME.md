@@ -166,3 +166,8 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - Al abrir un cuaderno empieza sola un bloque de 25 min; cada bloque te felicita y te da 5 min de descanso; si te quedas quieta 4 min o te vas a otra app, te llama de vuelta; al cumplir la meta, celebra.
 - Panel de Loona: «Me empuja a estudiar: sí/no» y «Meta diaria».
 - La foto del bolsillo ahora se guarda en la nube: aparece en el celular al entrar con tu cuenta.
+
+## v103 — Láminas ilustradas por tema
+- Los resúmenes con IA salen como lámina: ilustración del tema (célula, genética, cuerpo humano, plantas, química, física; mar para lo demás) en plata, blanco y rojo, esquema numerado dibujado por la IA, tarjetas numeradas, tabla resumen, nota «Recuerda», «Tip ENEM» y la curiosidad dentro de un sobre con sello de cera.
+- Se abre como tarjeta pop-up la primera vez que la ves; el esquema está bajo una hoja de papel vegetal que gira al tocarla; la lámina se inclina en 3D con el dedo o el mouse.
+- Otros colores solo cuando identifican algo (sangre arterial/venosa, cloroplastos, indicadores).
