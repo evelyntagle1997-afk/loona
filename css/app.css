@@ -2275,3 +2275,22 @@ html.lite .ag-dije-in, html.lite .agenda.closed .ag-dije-out { animation: none !
 .lam-quiz { background: var(--g-card) !important; border-color: var(--g-line) !important; color: var(--g-tx) !important; }
 .lam-quiz > summary span { color: var(--g-tx) !important; } .lam-quiz > summary small { color: var(--g-tx2) !important; }
 .qz { border-top-color: #2a1c15 !important; } .qz-stem { color: var(--g-tx) !important; } .qz-fb { color: #d8c8b4 !important; } .qz.real .qz-src { color: #b98a64 !important; }
+
+/* ============ v117: vaca fiel a tu termo (manchas grandes sobre marfil) como ACENTO; lo demás oscuro ============ */
+.agc-front { background: radial-gradient(120% 90% at 30% 20%, rgba(255,255,255,.08), transparent 55%), linear-gradient(90deg, rgba(0,0,0,.6), transparent 9%), url(../img/cuero.jpg) center / 384px, #120b08 !important; }
+.agc-front::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 24%; border-radius: inherit; background: linear-gradient(90deg, rgba(0,0,0,.15), transparent 30%, transparent 85%, rgba(0,0,0,.45)), var(--vaca) 0 0 / 30cqw; box-shadow: 1px 0 0 rgba(0,0,0,.6), 3px 0 8px rgba(0,0,0,.5); pointer-events: none; }
+.agc-front::before { display: none; }
+.agc-name, .agc-moon, .agc-hint { z-index: 1; }
+.agc-front > .agc-name, .agc-front > .agc-moon, .agc-front > .agc-hint { translate: 10% 0; }
+#loona-fab, .loona-fab { background: var(--vaca) 20% 30% / 150px, #0e0907 !important; color: #2B1A1E !important; }
+.ag-note, .ag-note.ag-hot { background: linear-gradient(rgba(14,9,7,.94), rgba(14,9,7,.94)) center / 86% 82% no-repeat, var(--vaca) 10% 20% / 260px, #0e0907 !important; }
+.ag-tabl.on { background: var(--vaca) 30% 40% / 180px, #CFC3B3 !important; }
+.ag-tabl.on span { color: #1a0f0b !important; text-shadow: 0 0 4px #EFE7DC, 0 0 8px #EFE7DC !important; }
+.sum.tpl-lamina { background: linear-gradient(180deg, rgba(14,9,7,.05) 0, rgba(14,9,7,.35) 90px, rgba(14,9,7,.92) 135px, #0e0907 160px), var(--vaca) 0 0 / 380px repeat-x, #0e0907 !important; }
+.sum.tpl-lamina .sum-title { -webkit-text-stroke: .14em #0e0907 !important; text-shadow: .05em .07em 0 #8a5a3c, .09em .12em 0 #2a1a12, 0 0 22px #000, 0 0 10px #000 !important; }
+.sum.tpl-lamina .lam-card::before { background: var(--vaca) 0 0 / 150px, #CFC3B3 !important; height: 8px !important; }
+.sum.tpl-lamina .lam-note.rec { background: var(--vaca) 0 0 / 200px, #0e0907 !important; box-shadow: inset 0 0 0 10px transparent, inset 0 0 0 999px rgba(14,9,7,.0), 0 8px 16px -8px #000 !important; padding: 0 !important; }
+.sum.tpl-lamina .lam-note.rec > * { background: rgba(14,9,7,.92); margin: 0 !important; }
+.sum.tpl-lamina .lam-note.rec > b { padding: 10px 12px 2px; margin: 8px 8px 0 !important; border-radius: 3px 3px 0 0; }
+.sum.tpl-lamina .lam-note.rec > p { padding: 2px 12px 10px; margin: 0 8px 8px !important; border-radius: 0 0 3px 3px; }
+.agc-hint { background: none !important; }
