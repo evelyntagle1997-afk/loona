@@ -219,3 +219,8 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - «Pon música»: radio continua con tu estilo (Chris Grey, Arctic Monkeys, The Neighbourhood, Cigarettes After Sex, Lana Del Rey…); al terminar una canción viene otra sin repetir; «siguiente» salta a otra.
 - Rueda sin duplicados (se quitaron Hablar con Loona, Música, Ambiente, Pantalla completa y Volver).
 - App instalada en PC sin barra de título (window-controls-overlay).
+
+## v115 — Tema vaca (crema, café y caramelo)
+- Agenda en cuero chocolate; tapa, luna, nota del clip y pestaña activa con estampado de vaca (`img/vaca.webp`).
+- Ventanas, avisos, HUD y cuestionarios en crema con texto café espresso.
+- Láminas de IA: hoja crema con franja de estampado de vaca, tarjetas crema con borde de vaca, esquema sobre café espresso, tabla y notas café. El prompt de la IA pide la paleta crema/café/caramelo/tostado.

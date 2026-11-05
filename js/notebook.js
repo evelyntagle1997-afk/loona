@@ -1402,7 +1402,7 @@ function lamTheme(el, subject = '') {
   if (/fisic|energ|fuerza|forca|movim|onda|electr|eletr|optic|cinemat|termo|atomo|magnet/.test(n)) return 'fisica';
   return 'mar';
 }
-const LAM_COL = { plata: '#C9CED6', rojo: '#D4202C', blanco: '#F5F5F5', azul: '#4C8DFF', verde: '#3FB27F', amarillo: '#E9C46A', morado: '#9B7BEA', naranja: '#F08A4B', rosa: '#E77AA8', celeste: '#5BC0EB', gris: '#9A9AA0' };
+const LAM_COL = { plata: '#B98A64', rojo: '#8A5A3C', blanco: '#4A2E22', cafe: '#4A2E22', caramelo: '#8A5A3C', crema: '#B98A64', azul: '#4C8DFF', verde: '#3FB27F', amarillo: '#E9C46A', morado: '#9B7BEA', naranja: '#F08A4B', rosa: '#E77AA8', celeste: '#5BC0EB', gris: '#9A9AA0' };
 const lamCol = c => LAM_COL[(c || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')] || '#C9CED6';
 // el SVG viene de la IA: se limpia (sin scripts, eventos ni enlaces externos)
 function cleanSvg(src) {
@@ -1424,8 +1424,8 @@ function lamBody(root, el, lt, subject) {
   // tarjetas: las partes del esquema (con IA) o las categorías del resumen (sin IA)
   // todas las tarjetas del mismo color (rojo); colores distintos solo si marcan categorías, con su leyenda
   const byCat = L.usa_colores === true && (L.leyenda || []).length > 0;
-  let cards = (L.partes || []).filter(p => p && p.nombre).slice(0, 10).map((p, i) => ({ n: p.n || i + 1, name: p.nombre, color: byCat ? lamCol(p.color) : '#D4202C', icon: p.icono || '', pts: (p.puntos || []).map(t => ({ html: fmtItem(t) })) }));
-  if (!cards.length) cards = grouped(el.items).map((g, i) => ({ n: i + 1, name: OLA_Q[g.k] || g.label, color: '#D4202C', icon: '', pts: g.list.map(it => ({ html: fmtItem(it.text), hl: it.hl })) }));
+  let cards = (L.partes || []).filter(p => p && p.nombre).slice(0, 10).map((p, i) => ({ n: p.n || i + 1, name: p.nombre, color: byCat ? lamCol(p.color) : '#8A5A3C', icon: p.icono || '', pts: (p.puntos || []).map(t => ({ html: fmtItem(t) })) }));
+  if (!cards.length) cards = grouped(el.items).map((g, i) => ({ n: i + 1, name: OLA_Q[g.k] || g.label, color: '#8A5A3C', icon: '', pts: g.list.map(it => ({ html: fmtItem(it.text), hl: it.hl })) }));
   if (byCat) root.append(h('div', { class: 'lam-legend' }, ...L.leyenda.slice(0, 6).map(x => h('span', {}, h('i', { style: { background: lamCol(x.color) } }), x.significa))));
   const card = c => h('div', { class: 'lam-card', style: { '--cc': c.color } },
     h('div', { class: 'lam-ch' }, h('b', { class: 'lam-n' }, String(c.n)), c.icon && h('span', { class: 'lam-ic' }, c.icon), h('span', {}, c.name)),
