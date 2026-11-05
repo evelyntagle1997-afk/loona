@@ -126,7 +126,6 @@ export class Wheel {
     if (nb) out.push({ k: 'nb-transform', cat: 'resolver', group: 'nb', icon: 'tpl', name: 'Transformar mi texto con plantilla (eliges cómo se ve)', run: () => nb.transformDrawer() });
     if (nb) out.push({ k: 'nb-solve', cat: 'resolver', group: 'nb', icon: 'calc', name: 'Resolver matemáticas paso a paso', run: () => A.solve({}) },
       { k: 'nb-rec', cat: 'resolver', group: 'nb', icon: 'mic', name: 'Grabar la clase (la IA la transcribe y la resume)', run: () => A.record() });
-    out.push({ k: 'loona-talk', cat: 'resolver', group: 'all', icon: 'moon', name: 'Hablar con Loona (música, temporizador, dudas)', run: () => import('./loona.js').then(m => m.callLoona()) });
     out.push(
       // flechas
       { k: 'undo', cat: 'flechas', group: 'all', icon: 'undo', name: 'Deshacer', run: () => pv ? pv.doUndo() : nb.undo() },
@@ -136,18 +135,10 @@ export class Wheel {
     out.push(
       ...(A.hasPdf ? [{ k: 'swap', cat: 'ver', group: 'all', icon: 'swap', name: 'Intercambiar de lugar el PDF y el cuaderno', run: () => A.swapSides() }] : []),
       {
-        k: 'view', cat: 'ver', group: 'all', icon: 'split', name: 'Vista: brillo, mostrar PDF, ambiente, teclado y más', sub: () => [
+        k: 'view', cat: 'ver', group: 'all', icon: 'split', name: 'Vista: brillo, mostrar PDF, teclado y más', sub: () => [
           nb ? { icon: 'pdf', name: A.hasPdf ? 'Mostrar u ocultar el PDF' : 'Abrir un PDF al lado', on: A.hasPdf && A.mode() !== 'nb', run: () => A.togglePdf() }
             : { icon: 'book', name: 'Mostrar u ocultar el cuaderno', on: A.mode() !== 'pdf', run: () => A.setMode(A.mode() === 'pdf' ? 'split' : 'pdf') },
           { icon: 'sun', name: 'Brillo a tu gusto', run: () => { const t = pv || nb; this.slidersCard('Brillo', [{ label: 'Brillo', min: .4, max: 1.3, step: .02, value: t.bright, set: v => t.setBright(v) }]); } },
-          {
-            icon: 'fire', name: 'Ambiente para estudiar (fogata, lluvia…)', on: !!ambPlaying(), group: 1, sub: () => [
-              ...AMBIENTS.map(a => ({ icon: a.icon, name: a.name, on: ambPlaying() === a.k, run: () => ambPlay(a.k), keep: 1 })),
-              { icon: 'sliders', name: 'Volumen a tu gusto', run: () => this.slidersCard('Volumen', [{ label: 'Volumen', min: 0, max: 1, step: .05, value: ambVolume(), set: v => ambVol(v) }]) },
-              { icon: 'stop', name: 'Apagar el ambiente', run: () => ambStop(), keep: 1 },
-            ],
-          },
-          { icon: 'music', name: 'YouTube y música (reproductor flotante)', run: () => A.music() },
           { icon: 'mic', name: 'Clases grabadas y transcripciones', run: () => A.audios() },
           { icon: 'keyboard', name: 'Teclado', group: 1, sub: () => this.kbItems() },
           {
@@ -160,12 +151,10 @@ export class Wheel {
               ] : []),
               ...(pv ? [{ icon: pv.fit === 'hoja' ? 'fitw' : 'fitp', name: pv.fit === 'hoja' ? 'Ajustar el PDF al ancho' : 'Ver la página del PDF completa', run: () => pv.setFit(pv.fit === 'hoja' ? 'ancho' : 'hoja'), keep: 1 }] : []),
               ...(nb ? [{ icon: nb.fit === 'ancho' ? 'fitp' : 'fitw', name: nb.fit === 'ancho' ? 'Ver la hoja A4 completa' : 'Ajustar la hoja al ancho', run: () => nb.toggleFit(), keep: 1 }] : []),
-              { icon: 'full', name: 'Pantalla completa', run: () => A.fullscreen() },
             ],
           },
           ...(pv ? [{ icon: 'download', name: 'Descargar el PDF subrayado', run: () => A.exportPdf() }] : []),
           ...(nb ? [{ icon: 'ribbon', name: 'Cambiar de cuaderno', run: () => A.chooseNotebook() }] : []),
-          { icon: 'back', name: 'Volver a la materia', run: () => A.back() },
         ],
       },
     );

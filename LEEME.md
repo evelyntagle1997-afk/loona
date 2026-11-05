@@ -213,3 +213,9 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - La luna ya no abre ventana: brilla y late mientras escucha.
 - Loona escucha siempre desde que abres la app (di «Luny…» / «Loona…»); no hay que tocar nada. La primera vez pide permiso de micrófono. Se apaga en Ajustes → IA → «Me escucha siempre».
 - PC: dictado del navegador (gratis, sin pitidos). Android: detector de voz + Gemini (sin pitidos; si Gemini descansa, pasa al dictado del celular).
+
+## v114 — Una materia a la vez, radio con tu estilo, menos repetidos
+- Cronograma secuencial: Biología → Química → Física → Aritmética y Álgebra → Geometría y Trigonometría → Razonamiento Verbal → Historia → Razonamiento Matemático; la siguiente empieza al terminar la anterior.
+- «Pon música»: radio continua con tu estilo (Chris Grey, Arctic Monkeys, The Neighbourhood, Cigarettes After Sex, Lana Del Rey…); al terminar una canción viene otra sin repetir; «siguiente» salta a otra.
+- Rueda sin duplicados (se quitaron Hablar con Loona, Música, Ambiente, Pantalla completa y Volver).
+- App instalada en PC sin barra de título (window-controls-overlay).

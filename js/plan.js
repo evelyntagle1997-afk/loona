@@ -78,8 +78,8 @@ export async function readChapters(rec) {
 // parejo hasta el final (ninguna queda olvidada), (3) más peso a lo que más cuenta para Medicina en el ENEM
 // (Biología, Química, Física, Matemática), (4) el sábado es más liviano y se usa para repasar la semana,
 // (5) las últimas 6 semanas antes de la fecha límite son SOLO de repaso general y simulados.
-const WEIGHT = [[/biolog/i, 1.35], [/quim/i, 1.25], [/fisic/i, 1.15], [/aritm|algebr|matem/i, 1.1], [/geom|trigon/i, 1.0], [/razonamiento verbal|\brv\b|lengua|portugu/i, 1.0], [/histor|geograf/i, .9], [/razonamiento matem|\brm\b/i, .85]];
-const weightOf = b => (WEIGHT.find(([re]) => re.test(b.subject + ' ' + b.name)) || [0, 1])[1];
+const WEIGHT = [[/biolog/i, 1.35], [/quim/i, 1.25], [/fisic/i, 1.15], [/razonamiento matem|\brm\b/i, .85], [/razonamiento verbal|\brv\b|lengua|portugu/i, 1.0], [/aritm|algebr|matem/i, 1.1], [/geom|trigon/i, 1.05], [/histor|geograf/i, .9]];
+const weightOf = b => (WEIGHT.find(([re]) => re.test((b.subject + ' ' + b.name).normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) || [0, 1])[1];
 const REVIEW_DAYS = 42;
 function studyDays(from, to, rest) { const out = []; for (let t = day0(from); t <= day0(to); t += DAY) if (!rest.includes(new Date(t).getDay())) out.push(t); return out; }
 export function phases(plan) { const end = new Date(plan.deadline + 'T12:00'); return { contentEnd: +end - REVIEW_DAYS * DAY, end: +end }; }
@@ -89,6 +89,9 @@ export function schedule(plan, from = Date.now()) {
   const days = studyDays(from, contentEnd, plan.restDays || []);
   const st = books.map(b => ({ b, w: weightOf(b), total: b.chapters.length, done: b.chapters.filter(c => c.done).length, queue: b.chapters.map((c, i) => ({ ...c, i })).filter(c => !c.done) }));
   const remaining = st.reduce((a, x) => a + x.queue.length, 0);
+  // cola única: materias en orden de prioridad, cada una completa (todos sus libros) antes de la siguiente
+  const order = [...new Set(st.slice().sort((a, c) => c.w - a.w || (a.b.subject || '').localeCompare(c.b.subject || '')).map(x => x.b.subject || x.b.name))];
+  const seq = order.flatMap(sub => st.filter(x => (x.b.subject || x.b.name) === sub).flatMap(x => x.queue.map(ch => ({ book: x.b.id, name: x.b.name, subject: x.b.subject, ch }))));
   if (days.length && remaining) {
     const cap = days.reduce((a, t) => a + (new Date(t).getDay() === 6 ? .5 : 1), 0);
     let acc = 0;
@@ -97,14 +100,9 @@ export function schedule(plan, from = Date.now()) {
       let n = Math.floor(acc + 1e-9); if (n <= 0) continue; acc -= n;
       // lo que ya terminaste hoy ocupa los lugares de hoy (no aparecen unidades nuevas al completar el plan)
       if (t === day0(from)) { const dt = books.reduce((a, b) => a + b.chapters.filter(c => c.done && c.doneAt && day0(c.doneAt) === t).length, 0); n = Math.max(0, n - dt); if (!n) continue; }
-      // las 2 materias más atrasadas respecto a su peso
-      const pr = x => (x.done + (x.total - x.done - x.queue.length)) / Math.max(1, x.total) / x.w;
-      const pick = st.filter(x => x.queue.length).sort((a, c) => pr(a) - pr(c)).slice(0, 2);
+      // UNA materia a la vez: hasta terminarla no empieza la siguiente (orden: lo que más cuenta para Medicina primero)
       const list = (map[dkey(t)] ||= []);
-      while (n > 0 && pick.some(x => x.queue.length)) {
-        const x = pick.filter(y => y.queue.length).sort((a, c) => pr(a) - pr(c))[0];
-        const ch = x.queue.shift(); list.push({ book: x.b.id, name: x.b.name, subject: x.b.subject, ch }); n--;
-      }
+      while (n > 0 && seq.length) { const x = seq.shift(); list.push(x); n--; }
     }
   }
   // si terminas el contenido antes de tiempo, esos días pasan a ser de repaso (más tiempo para simulados)
@@ -262,7 +260,7 @@ export async function openPlan() {
       ...(paceRow ? [paceRow] : []), todayBox, ...(aheadBox ? [aheadBox] : []), ...(next.childNodes.length ? [h('div', {}, h('h3', {}, 'Próximos días'), next)] : []),
       h('h3', {}, 'Mis libros'), books, h('div', { class: 'ie-row' }, impBtn), status, h('div', { class: 'ie-row' }, sel, addBtn),
       h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Terminar todo antes de:'), dl), restRow,
-      h('p', { class: 'opt-hint' }, 'Cómo está armado: cada día estudias 2 materias que se alternan (intercalar ayuda a recordar), todas avanzan parejo y Biología, Química, Física y Matemática tienen más peso porque cuentan más para Medicina. Los capítulos largos se parten en unidades de máx. ~20 páginas. El sábado es más liviano, el domingo descansas, y las últimas 6 semanas son solo de repaso y simulados. El ritmo diario es fijo: si adelantas, terminas antes y ganas semanas de repaso; si te atrasas, lo pendiente se reparte solo en los días que quedan. Si dos ediciones del mismo libro, uso la nueva y pauso la anterior.'));
+      h('p', { class: 'opt-hint' }, 'Cómo está armado: una materia a la vez; cuando la terminas empieza la siguiente (primero Biología, Química, Física y Matemática, que cuentan más para Medicina). Lo ya estudiado vuelve en tus repasos de errores para que no se olvide. Los capítulos largos se parten en unidades de máx. ~20 páginas. El sábado es más liviano, el domingo descansas, y las últimas 6 semanas son solo de repaso y simulados. El ritmo diario es fijo: si adelantas, terminas antes y ganas semanas de repaso; si te atrasas, lo pendiente se reparte solo en los días que quedan. Si dos ediciones del mismo libro, uso la nueva y pauso la anterior.'));
   };
   await draw();
   modal({ title: 'Mi cronograma ENEM', wide: true, body });

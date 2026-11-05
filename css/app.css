@@ -2124,3 +2124,9 @@ html.lite .ag-dije-in, html.lite .agenda.closed .ag-dije-out { animation: none !
 #loona-fab.talking.live { animation: fabListen 1.3s ease-in-out infinite; }
 @keyframes fabListen { 50% { box-shadow: 0 0 0 3px #D4202C, 0 0 36px rgba(212,32,44,.95), 0 6px 14px rgba(0,0,0,.6); transform: scale(1.07); } }
 @media (prefers-reduced-motion: reduce) { #loona-fab.talking.live { animation: none; } }
+
+/* v114: sin barra de título en la app instalada (PC): solo quedan los botones de la ventana; esta franja permite moverla */
+.wco-drag { display: none; }
+@media (display-mode: window-controls-overlay) {
+  .wco-drag { display: block; position: fixed; z-index: 99; left: env(titlebar-area-x, 0); top: env(titlebar-area-y, 0); width: env(titlebar-area-width, 100%); height: env(titlebar-area-height, 0); -webkit-app-region: drag; app-region: drag; }
+}

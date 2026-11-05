@@ -30,14 +30,14 @@ export async function control(cmd, arg) {
   if (cmd === 'buscar') return playSearch(arg);
   if (radio && ['pausar', 'cerrar', 'silencio'].includes(cmd)) { stopStream(); if (!box) return true; }
   if (!box || !player?.getPlayerState) {
-    if (cmd === 'reproducir') { if (last()) openMusic(); else playSearch(arg || pickTaste()); return true; }
+    if (cmd === 'reproducir') { radio_ = true; seed = null; if (arg) playSearch(arg); else playNextTaste(); return true; }   // «pon música»: radio con tu estilo
     return false;
   }
   const v = () => player.getVolume?.() ?? 50;
   switch (cmd) {
     case 'pausar': player.pauseVideo(); break;
     case 'reproducir': player.playVideo(); break;
-    case 'siguiente': player.nextVideo(); break;
+    case 'siguiente': if (radio_) { playNextTaste(); break; } player.nextVideo(); break;
     case 'anterior': player.previousVideo(); break;
     case 'subir': player.unMute(); if (base != null) base = Math.min(100, base + (+arg || 20)); else fade(Math.min(100, v() + (+arg || 20)), 300); break;
     case 'bajar': if (base != null) base = Math.max(0, base - (+arg || 20)); else fade(Math.max(0, v() - (+arg || 20)), 300); break;
@@ -95,8 +95,25 @@ export function playStream() {
 }
 export function stopStream() { radio?.pause(); radio = null; }
 // si Loona elige sola: algo del estilo de Eve
-const TASTE = ['Chris Grey', 'Arctic Monkeys', 'The Neighbourhood', 'Cigarettes After Sex', 'The 1975', 'Lana Del Rey', 'Mazzy Star', 'Deftones', 'Billie Eilish'];
-export const pickTaste = () => TASTE[Math.floor(Math.random() * TASTE.length)] + ' canción popular';
+const TASTE = ['Chris Grey', 'Arctic Monkeys', 'The Neighbourhood', 'Cigarettes After Sex', 'The 1975', 'Lana Del Rey', 'Mazzy Star', 'Deftones', 'Billie Eilish', 'Chase Atlantic', 'Lord Huron', 'Hozier', 'Mitski', 'Beach House', 'The Weeknd'];
+export const pickTaste = () => TASTE[Math.floor(Math.random() * TASTE.length)] + ' official audio';
+// radio con tu estilo: al terminar una canción viene otra (Chris Grey, Arctic Monkeys…), sin repetir las últimas
+let radio_ = false, seed = null, lastArtist = '';
+const PK = 'ytPlayed';
+const played = () => { try { return JSON.parse(localStorage.getItem(PK)) || []; } catch { return []; } };
+const markPlayed = id => { const a = played().filter(x => x !== id); a.unshift(id); try { localStorage.setItem(PK, JSON.stringify(a.slice(0, 150))); } catch { } };
+export async function playNextTaste() {
+  const pool = TASTE.filter(a => a !== lastArtist);
+  const artist = seed && Math.random() < .35 && seed !== lastArtist ? seed : pool[Math.floor(Math.random() * pool.length)];
+  lastArtist = artist;
+  const ids = await searchYT(artist + (Math.random() < .5 ? ' official audio' : ' song'));
+  const seen = new Set(played());
+  const fresh = ids.filter(id => !seen.has(id));
+  const id = (fresh.length ? fresh : ids)[Math.floor(Math.random() * Math.min(4, (fresh.length ? fresh : ids).length))];
+  if (!id) return playStream();
+  cands = ids.filter(x => x !== id && !seen.has(x)).slice(0, 4); markPlayed(id);
+  return playUrl('https://www.youtube.com/watch?v=' + id);
+}
 // ¿existe ese video? (oEmbed de YouTube, sin clave)
 async function exists(id) {
   try { const c = new AbortController(); const t = setTimeout(() => c.abort(), 3500);
@@ -124,11 +141,12 @@ async function geminiIds(q) {   // respaldo: le pregunto a Gemini (puede fallar 
 }
 async function playSearch(q) {
   if (!q) return false;
+  radio_ = true; seed = TASTE.find(a => q.toLowerCase().includes(a.toLowerCase())) || null;   // después sigue con canciones de tu estilo
   let ids = await searchYT(q), checked = true;
   if (!ids.length) { ids = await geminiIds(q); checked = false; }
   for (let i = 0; i < Math.min(ids.length, 4); i++) {
     const ok = checked ? true : await exists(ids[i]);
-    if (ok !== false) { cands = ids.slice(i + 1, i + 6); return playUrl('https://www.youtube.com/watch?v=' + ids[i]); }
+    if (ok !== false) { cands = ids.slice(i + 1, i + 6); markPlayed(ids[i]); return playUrl('https://www.youtube.com/watch?v=' + ids[i]); }
   }
   toast('No encontré «' + q + '»; te pongo música para estudiar.', 3500);
   return playStream();
@@ -152,7 +170,7 @@ export function openMusic(first) {
   const go = () => {
     const p = parse(inp.value);
     if (!p) return toast('Ese enlace no es de YouTube. Copia el enlace desde Compartir → Copiar enlace.', 4000);
-    cands = []; save(p); start(p);
+    cands = []; radio_ = false; save(p); start(p);
   };
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
   const src = h('div', { class: 'yt-src' }, inp, h('button', { class: 'chip', onclick: go }, 'Poner'),
@@ -200,7 +218,7 @@ export function openMusic(first) {
   async function start(p) {
     try { await loadApi(); } catch (e) { return toast(e.message); }
     const opts = { playerVars: { playsinline: 1, rel: 0, modestbranding: 1, ...(p.list ? { listType: 'playlist', list: p.list } : {}) },
-      events: { onError: () => { if (cands.length) { const n = cands.shift(); save({ v: n }); player.loadVideoById(n); ensureSound(); return; } toast('Ese video no se puede reproducir aquí. Prueba otro enlace.', 3500); }, onStateChange: ev => { if (ev.data === 1) autoHide?.(); playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
+      events: { onError: () => { if (cands.length) { const n = cands.shift(); save({ v: n }); player.loadVideoById(n); ensureSound(); return; } toast('Ese video no se puede reproducir aquí. Prueba otro enlace.', 3500); }, onStateChange: ev => { if (ev.data === 0 && radio_ && !p.list) { playNextTaste(); return; } if (ev.data === 1) autoHide?.(); playBtn.innerHTML = icon(ev.data === 1 ? 'pause' : 'play', 20); const t = player.getVideoData?.().title; if (t) titleEl.textContent = t; } } };
     if (player?.loadVideoById) { if (p.list) player.loadPlaylist({ list: p.list, listType: 'playlist', index: 0 }); else player.loadVideoById(p.v); ensureSound(); return; }
     player = new YT.Player('yt-frame', { ...opts, videoId: p.v || undefined, height: '100%', width: '100%' });
     player.addEventListener?.('onReady', () => { ensureSound(); });
