@@ -2318,3 +2318,16 @@ html.lite .ag-dije-in, html.lite .agenda.closed .ag-dije-out { animation: none !
 .sum.tpl-lamina .lam-note.rec > * { background: rgba(31,19,13,.93); }
 .errv-day, .quiz-alt { background: #1a100b !important; }
 .agc-front { background: radial-gradient(120% 90% at 30% 20%, rgba(255,214,170,.16), transparent 55%), linear-gradient(90deg, rgba(0,0,0,.4), transparent 9%), url(../img/cuero.jpg) center / 384px, linear-gradient(160deg, #6b4129, #3d2418 70%, #2a170f) !important; background-blend-mode: normal, normal, soft-light, normal !important; }
+
+/* ============ v119: tapa igual a «Mis Ventas» — piel de vaca real, solapa de cuero, broche de latón, título gótico dorado ============ */
+.agc-front { background: radial-gradient(120% 90% at 25% 15%, rgba(255,240,220,.16), transparent 55%), linear-gradient(90deg, rgba(0,0,0,.55), transparent 10%, transparent 85%, rgba(0,0,0,.35)), url(../img/vaca-real.webp) center / 52cqw, #3b2418 !important; background-blend-mode: normal !important; border: 1px solid #1a0f0a; box-shadow: 0 2cqw 5cqw rgba(0,0,0,.85), inset 0 0 0 .1cqw rgba(255,230,200,.06) !important; }
+.agc-front::before { display: block !important; content: '' !important; position: absolute; inset: 1.1cqw; border: .12cqw dashed rgba(230,200,160,.38); border-radius: .6cqw; background: none !important; pointer-events: none; }
+.agc-front::after { background: linear-gradient(90deg, rgba(0,0,0,.6), rgba(255,230,200,.06) 60%, rgba(0,0,0,.3)) !important; width: 6% !important; }
+.agc-moon { display: none !important; }
+.agc-name { top: 40% !important; left: 14% !important; right: 14% !important; translate: 0 0 !important; padding: 2.2cqw 0 2.6cqw !important; font: 5.4cqw/1.1 'UnifrakturMaguntia', 'Grenze Gotisch', serif !important; background: none !important; color: #e3c597 !important; -webkit-text-fill-color: #e3c597 !important; text-shadow: 0 .1cqw 0 #fff2da, 0 .25cqw .3cqw rgba(0,0,0,.9) !important; filter: none !important; }
+.agc-front > .agc-name::before { content: ''; position: absolute; inset: 0; z-index: -1; border: .1cqw solid rgba(201,162,122,.55); border-radius: .4cqw; background: rgba(12,8,6,.78); box-shadow: inset 0 0 0 .45cqw rgba(10,6,4,.75), inset 0 0 0 .55cqw rgba(201,162,122,.35); }
+.agc-front > .agc-name::after { content: ''; position: absolute; left: 30%; right: 30%; bottom: 1.2cqw; height: .1cqw; background: linear-gradient(90deg, transparent, #c9a27a, transparent); }
+.agc-name { isolation: isolate; }
+.agc-hint { font-family: Cinzel, serif !important; color: #e8d4b8 !important; background: none !important; text-shadow: 0 .1cqw .3cqw #000 !important; }
+.agc-strap, .agc-front .agc-strap { background: radial-gradient(ellipse at 60% 20%, rgba(255,235,210,.14), transparent 60%), linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.1) 30%), linear-gradient(rgba(25,15,10,.55), rgba(25,15,10,.55)), url(../img/cuero.jpg) center / 300px, #2a1810 !important; box-shadow: inset 0 0 0 .12cqw rgba(230,200,160,.3), 0 .4cqw .8cqw rgba(0,0,0,.7) !important; }
+.agc-strap::after { background: radial-gradient(circle at 35% 30%, #fff3d6, #c9a27a 40%, #6b4e2c 75%, #3a2a18) !important; box-shadow: 0 .2cqw .3cqw rgba(0,0,0,.7); }
