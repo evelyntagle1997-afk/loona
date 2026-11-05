@@ -93,8 +93,10 @@ export function schedule(plan, from = Date.now()) {
     const cap = days.reduce((a, t) => a + (new Date(t).getDay() === 6 ? .5 : 1), 0);
     let acc = 0;
     for (const t of days) {
-      acc += (new Date(t).getDay() === 6 ? .5 : 1) * remaining / cap;
+      acc += (new Date(t).getDay() === 6 ? .5 : 1) * Math.max(remaining / cap, plan.pace || 0);
       let n = Math.floor(acc + 1e-9); if (n <= 0) continue; acc -= n;
+      // lo que ya terminaste hoy ocupa los lugares de hoy (no aparecen unidades nuevas al completar el plan)
+      if (t === day0(from)) { const dt = books.reduce((a, b) => a + b.chapters.filter(c => c.done && c.doneAt && day0(c.doneAt) === t).length, 0); n = Math.max(0, n - dt); if (!n) continue; }
       // las 2 materias más atrasadas respecto a su peso
       const pr = x => (x.done + (x.total - x.done - x.queue.length)) / Math.max(1, x.total) / x.w;
       const pick = st.filter(x => x.queue.length).sort((a, c) => pr(a) - pr(c)).slice(0, 2);
@@ -105,8 +107,30 @@ export function schedule(plan, from = Date.now()) {
       }
     }
   }
+  // si terminas el contenido antes de tiempo, esos días pasan a ser de repaso (más tiempo para simulados)
+  if (remaining) for (const t of days) if (!map[dkey(t)]?.length && t > Math.max(...Object.keys(map).filter(k => map[k].some(x => !x.review)).map(k => +new Date(k + 'T00:00')), 0)) (map[dkey(t)] ||= []).push({ review: true });
   for (const t of studyDays(Math.max(from, contentEnd + DAY), end, plan.restDays || [])) (map[dkey(t)] ||= []).push({ review: true });
   return map;
+}
+// ritmo diario fijo (unidades por día de estudio), calculado cuando agregas o quitas libros
+function capacity(plan, from) { const { contentEnd } = phases(plan); return studyDays(from, contentEnd, plan.restDays || []).reduce((a, t) => a + (new Date(t).getDay() === 6 ? .5 : 1), 0); }
+const pendingUnits = plan => plan.books.filter(b => !b.paused).reduce((a, b) => a + b.chapters.filter(c => !c.done).length, 0);
+export function resetPace(plan) { const cap = capacity(plan, Date.now()); plan.pace = cap ? +(pendingUnits(plan) / cap).toFixed(3) : 0; plan.paceFrom = day0(Date.now()); plan.paceDone = plan.books.filter(b => !b.paused).reduce((a, b) => a + b.chapters.filter(c => c.done).length, 0); return plan; }
+// cuántos días vas adelantada (+) o atrasada (−) respecto al ritmo
+export function progressInfo(plan) {
+  if (!plan.pace) return null;
+  const done = plan.books.filter(b => !b.paused).reduce((a, b) => a + b.chapters.filter(c => c.done).length, 0);
+  const capSince = studyDays(plan.paceFrom, Date.now() - DAY, plan.restDays || []).reduce((a, t) => a + (new Date(t).getDay() === 6 ? .5 : 1), 0);
+  const expected = (plan.paceDone || 0) + plan.pace * capSince;
+  const days = Math.round((done - expected) / plan.pace);
+  const map = schedule(plan); const last = Object.keys(map).filter(k => map[k].some(x => !x.review)).sort().at(-1);
+  return { days, finish: last ? new Date(last + 'T12:00') : null };
+}
+// siguientes unidades para adelantar (de los próximos días)
+export function nextUnits(plan, n = 4) {
+  const map = schedule(plan), today = dkey(Date.now()), out = [];
+  for (const k of Object.keys(map).sort()) { if (k <= today) continue; for (const x of map[k]) if (!x.review && out.length < n) out.push(x); if (out.length >= n) break; }
+  return out;
 }
 export async function todayPlan() { const p = await getPlan(); return (schedule(p)[dkey(Date.now())] || []).filter(x => !x.review); }
 export async function isReviewDay() { const p = await getPlan(); return Date.now() > phases(p).contentEnd; }
@@ -129,7 +153,11 @@ export async function autoComplete(pdfId, visited) {
 export async function setDone(bookId, i, done) {
   const p = await getPlan(); const b = p.books.find(x => x.id === bookId); if (!b || !b.chapters[i]) return;
   const was = b.chapters[i].done; b.chapters[i].done = done; b.chapters[i].doneAt = Date.now(); await savePlan(p);
-  if (done && !was) { const G = await import('./game.js'); await G.award('unidad', { title: b.chapters[i].title, subject: b.subject }); }
+  if (done && !was) {
+    const G = await import('./game.js'); await G.award('unidad', { title: b.chapters[i].title, subject: b.subject });
+    const t = await todayPlan();
+    if (!t.some(x => !x.ch.done)) { const L = await import('./loona.js'); L.speak('Plan de hoy listo, Eve. Si todavía tienes energía, sigue con la próxima unidad: todo lo que adelantes te deja más tiempo de repaso al final.'); }
+  }
 }
 
 // ---------- importar tus PDF base: crea la materia, su cuaderno y lo pone en el cronograma ----------
@@ -162,7 +190,7 @@ export async function importBasePdfs(files, onStep = () => { }) {
     const skip = a.kb?.supersededBy && keys.has(a.kb.supersededBy);
     plan.books.push({ id: a.rec.id, key: a.kb?.key || '', name: a.rec.name, subject: a.sname, chapters: a.r.chapters, how: a.r.how + (skip ? ' · edición anterior (pausada)' : ''), paused: !!skip, added: Date.now() });
   }
-  await savePlan(plan);
+  resetPace(plan); await savePlan(plan);
   return added;
 }
 
@@ -171,6 +199,7 @@ export async function openPlan() {
   const body = h('div', { class: 'plan' });
   const draw = async () => {
     const plan = await getPlan();
+    if (plan.books.length && !plan.pace) { resetPace(plan); await savePlan(plan); }
     const subjects = await db.all('subject'), pdfs = (await db.all('pdf')).filter(p => !p.deleted);
     const sName = id => subjects.find(s => s.id === id)?.name || '';
     const { contentEnd, end } = phases(plan);
@@ -188,20 +217,30 @@ export async function openPlan() {
           ...g.chs.map(c => h('label', { class: 'plan-ch' + (c.auto ? ' auto' : '') }, h('input', { type: 'checkbox', checked: !!c.done, onchange: e => setDone(g.id, c.i, e.target.checked) }), h('span', {}, c.title + (c.page ? ` · pág. ${c.page}${c.end ? '–' + c.end : ''}` : '') + (c.auto ? ' · se completó sola ✓' : ''))))))
         : [h('p', { class: 'opt-hint' }, plan.books.length ? (new Date().getDay() === 0 ? 'Domingo de descanso. Mañana seguimos.' : 'Hoy no tienes unidades nuevas: repasa tus errores o adelanta.') : 'Importa tus PDF y armo tu cronograma.')]),
       h('p', { class: 'opt-hint' }, 'Tip: si lees las páginas de la unidad en el PDF, se marca sola.'));
+    // seguir estudiando: las siguientes unidades, para adelantar cuando todavía tienes energía
+    const todayDone = today.length && today.every(x => x.ch.done);
+    const ahead = nextUnits(plan, todayDone ? 4 : 2);
+    const aheadBox = !inReview && ahead.length ? h('div', { class: 'plan-ahead' + (todayDone ? ' hot' : '') },
+      h('h3', {}, todayDone ? '¿Sigues? Adelanta' : 'Si te sobra tiempo, adelanta'),
+      ...ahead.map(x => h('label', { class: 'plan-ch' }, h('input', { type: 'checkbox', onchange: async e => { if (e.target.checked) { await setDone(x.book, x.ch.i, true); const G = await import('./game.js'); await G.award('adelanto', { title: x.ch.title }); draw(); } } }), h('span', {}, `${x.subject || x.name}: ${x.ch.title}` + (x.ch.page ? ` · pág. ${x.ch.page}${x.ch.end ? '–' + x.ch.end : ''}` : '')))),
+      h('p', { class: 'opt-hint' }, 'Lo que adelantas no aligera los días siguientes: hace que termines antes y te deja más semanas de repaso y simulados.')) : null;
+    const pi = progressInfo(plan);
+    const paceRow = pi ? h('p', { class: 'plan-pace ' + (pi.days > 0 ? 'up' : pi.days < 0 ? 'down' : '') }, pi.days > 0 ? `🚀 Vas ${pi.days} ${pi.days === 1 ? 'día' : 'días'} adelantada` : pi.days < 0 ? `⏳ Vas ${-pi.days} ${pi.days === -1 ? 'día' : 'días'} atrasada: el plan reparte lo pendiente solo` : '✓ Vas al día',
+      pi.finish ? ` · terminas el contenido el ${pi.finish.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}` : '') : null;
     // próximos 7 días
     const next = h('div', { class: 'plan-next' });
     for (let d = 1, k = 0; d <= 21 && k < 7; d++) { const t = day0(Date.now()) + d * DAY, it = map[dkey(t)]; if (it?.length) { k++; next.append(h('div', { class: 'plan-day' }, h('b', {}, new Date(t).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })), h('span', {}, planLine(it)))); } }
     const books = h('div', { class: 'plan-books' }, ...plan.books.map(b => { const d = b.chapters.filter(c => c.done).length;
       return h('div', { class: 'plan-brow' + (b.paused ? ' paused' : '') }, h('span', {}, h('b', {}, b.name), h('small', {}, `${b.subject || ''} · ${d}/${b.chapters.length} unidades · ${b.how || ''}`)),
         h('i', { class: 'plan-bar' }, h('i', { style: { width: (b.chapters.length ? d / b.chapters.length * 100 : 0) + '%' } })),
-        h('span', { class: 'ie-row' }, h('button', { class: 'chip', onclick: async () => { const p = await getPlan(); const x = p.books.find(y => y.id === b.id); x.paused = !x.paused; await savePlan(p); draw(); } }, b.paused ? 'Activar' : 'Pausar'),
-          h('button', { class: 'chip', onclick: async () => { const p = await getPlan(); p.books = p.books.filter(x => x.id !== b.id); await savePlan(p); draw(); } }, 'Quitar'))); }));
+        h('span', { class: 'ie-row' }, h('button', { class: 'chip', onclick: async () => { const p = await getPlan(); const x = p.books.find(y => y.id === b.id); x.paused = !x.paused; resetPace(p); await savePlan(p); draw(); } }, b.paused ? 'Activar' : 'Pausar'),
+          h('button', { class: 'chip', onclick: async () => { const p = await getPlan(); p.books = p.books.filter(x => x.id !== b.id); resetPace(p); await savePlan(p); draw(); } }, 'Quitar'))); }));
     const free = pdfs.filter(p => !plan.books.some(b => b.id === p.id));
     const sel = h('select', { class: 'field' }, ...free.map(p => h('option', { value: p.id }, (sName(p.subject) ? sName(p.subject) + ' — ' : '') + p.name)));
     const addBtn = h('button', { class: 'btn', disabled: !free.length, onclick: async () => {
       const rec = pdfs.find(p => p.id === sel.value); if (!rec) return;
       addBtn.textContent = 'Leyendo el índice…'; addBtn.disabled = true;
-      try { const r = await readChapters(rec); const p = await getPlan(); p.books.push({ id: rec.id, key: r.key || '', name: rec.name, subject: sName(rec.subject) || r.subject || '', chapters: r.chapters, how: r.how, added: Date.now() }); await savePlan(p); toast(`${r.chapters.length} unidades de «${rec.name}» en tu cronograma`, 3000); }
+      try { const r = await readChapters(rec); const p = await getPlan(); p.books.push({ id: rec.id, key: r.key || '', name: rec.name, subject: sName(rec.subject) || r.subject || '', chapters: r.chapters, how: r.how, added: Date.now() }); resetPace(p); await savePlan(p); toast(`${r.chapters.length} unidades de «${rec.name}» en tu cronograma`, 3000); }
       catch (e) { toast(e.message, 4500); }
       draw();
     } }, free.length ? 'Agregar al cronograma' : 'Todos tus PDF ya están');
@@ -213,17 +252,17 @@ export async function openPlan() {
       catch (e) { toast(e.message, 5000); }
       impBtn.disabled = false; draw();
     } }, 'Importar mis PDF base (crea materias y cuadernos)');
-    const dl = h('input', { class: 'field', type: 'date', value: plan.deadline, onchange: async e => { const p = await getPlan(); p.deadline = e.target.value || DEADLINE_DEFAULT; await savePlan(p); draw(); } });
-    const restRow = h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Días de descanso:'), ...['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((n, i) => h('button', { class: 'chip' + ((plan.restDays || []).includes(i) ? ' on' : ''), onclick: async () => { const p = await getPlan(); const r = new Set(p.restDays || []); r.has(i) ? r.delete(i) : r.add(i); p.restDays = [...r]; await savePlan(p); draw(); } }, n)));
+    const dl = h('input', { class: 'field', type: 'date', value: plan.deadline, onchange: async e => { const p = await getPlan(); p.deadline = e.target.value || DEADLINE_DEFAULT; resetPace(p); await savePlan(p); draw(); } });
+    const restRow = h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Días de descanso:'), ...['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((n, i) => h('button', { class: 'chip' + ((plan.restDays || []).includes(i) ? ' on' : ''), onclick: async () => { const p = await getPlan(); const r = new Set(p.restDays || []); r.has(i) ? r.delete(i) : r.add(i); p.restDays = [...r]; resetPace(p); await savePlan(p); draw(); } }, n)));
     const G = await import('./game.js');
     body.replaceChildren(
       G.hud(),
       h('div', { class: 'errv-top' }, h('div', {}, h('b', { class: 'errv-big' }, String(contentLeft)), h('small', {}, 'días de contenido')), h('div', {}, h('b', { class: 'errv-big' }, String(daysLeft)), h('small', {}, 'días hasta la meta')), h('div', {}, h('b', { class: 'errv-big' }, `${doneCh}/${totalCh}`), h('small', {}, 'unidades')), h('div', {}, h('b', { class: 'errv-big' }, totalCh ? Math.round(doneCh / totalCh * 100) + '%' : '0%'), h('small', {}, 'avance'))),
       h('div', { class: 'plan-phases' }, h('span', { class: inReview ? '' : 'on' }, `Fase 1 · Contenido (hasta ${new Date(contentEnd).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })})`), h('span', { class: inReview ? 'on' : '' }, 'Fase 2 · Repaso general y simulados (6 semanas)')),
-      todayBox, ...(next.childNodes.length ? [h('div', {}, h('h3', {}, 'Próximos días'), next)] : []),
+      ...(paceRow ? [paceRow] : []), todayBox, ...(aheadBox ? [aheadBox] : []), ...(next.childNodes.length ? [h('div', {}, h('h3', {}, 'Próximos días'), next)] : []),
       h('h3', {}, 'Mis libros'), books, h('div', { class: 'ie-row' }, impBtn), status, h('div', { class: 'ie-row' }, sel, addBtn),
       h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Terminar todo antes de:'), dl), restRow,
-      h('p', { class: 'opt-hint' }, 'Cómo está armado: cada día estudias 2 materias que se alternan (intercalar ayuda a recordar), todas avanzan parejo y Biología, Química, Física y Matemática tienen más peso porque cuentan más para Medicina. Los capítulos largos se parten en unidades de máx. ~20 páginas. El sábado es más liviano, el domingo descansas, y las últimas 6 semanas son solo de repaso y simulados. Si un día no estudias, lo pendiente se reparte solo. Si dos ediciones del mismo libro, uso la nueva y pauso la anterior.'));
+      h('p', { class: 'opt-hint' }, 'Cómo está armado: cada día estudias 2 materias que se alternan (intercalar ayuda a recordar), todas avanzan parejo y Biología, Química, Física y Matemática tienen más peso porque cuentan más para Medicina. Los capítulos largos se parten en unidades de máx. ~20 páginas. El sábado es más liviano, el domingo descansas, y las últimas 6 semanas son solo de repaso y simulados. El ritmo diario es fijo: si adelantas, terminas antes y ganas semanas de repaso; si te atrasas, lo pendiente se reparte solo en los días que quedan. Si dos ediciones del mismo libro, uso la nueva y pauso la anterior.'));
   };
   await draw();
   modal({ title: 'Mi cronograma ENEM', wide: true, body });

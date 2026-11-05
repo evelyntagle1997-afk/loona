@@ -185,3 +185,8 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - Una unidad se completa sola si lees sus páginas en el PDF.
 - Modo juego: XP, niveles (hasta «Doctora Eve · UNILA»), misiones diarias automáticas, racha, 16 logros y mapa de jefes (un libro = un jefe).
 - En la agenda: el cristal ámbar queda libre; la tarjeta «Nueva materia» se cambió por «Plan de hoy».
+
+## v106 — Seguir estudiando
+- Ritmo diario fijo: lo que adelantas no aligera los días siguientes, hace que termines antes y ganes semanas de repaso; si te atrasas, se reparte solo.
+- «¿Sigues? Adelanta»: al terminar el plan de hoy aparecen las próximas unidades (+25 XP extra cada una, logro «Adelantada»).
+- Indicador «Vas N días adelantada/atrasada» y fecha en que terminas el contenido.

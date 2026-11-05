@@ -2046,3 +2046,7 @@ html.lite .sum.tpl-lamina .lam-big { animation: none !important; }
 .plan-phases span.on { border-color: #D4202C; color: #fff; background: rgba(212,32,44,.12); }
 .plan-ch.auto span { color: #5fd39c; }
 .plan-brow.paused { opacity: .5; }
+.plan-ahead { border: 1.5px dashed #6b6b72; border-radius: 12px; padding: 10px 14px; }
+.plan-ahead.hot { border-color: #D4202C; border-style: solid; box-shadow: 0 0 18px rgba(212,32,44,.2); }
+.plan-pace { margin: 0; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.04); font-weight: 600; }
+.plan-pace.up { color: #5fd39c; } .plan-pace.down { color: #ffb4b8; }

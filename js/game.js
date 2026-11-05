@@ -4,7 +4,7 @@ import * as db from './db.js';
 import { h, modal, toast } from './ui.js';
 
 const ID = 'game';
-const XP = { unidad: 60, repaso_ok: 20, repaso_fail: 6, quiz_ok: 12, quiz_fail: 4, bloque: 25, mision: 80, materia: 400, racha: 50 };
+const XP = { unidad: 60, adelanto: 25, repaso_ok: 20, repaso_fail: 6, quiz_ok: 12, quiz_fail: 4, bloque: 25, mision: 80, materia: 400, racha: 50 };
 export const LEVELS = ['Aprendiz de la noche', 'Lectora de grimorios', 'Alquimista novata', 'Guardiana del atlas', 'Cazadora de errores', 'Bruja de la célula', 'Estratega del ENEM', 'Interna de la luna', 'Residente gótica', 'Futura médica', 'Doctora Eve · UNILA'];
 const need = n => Math.round(300 * Math.pow(n, 1.55));   // XP total para llegar al nivel n+1
 export const levelOf = xp => { let n = 0; while (n < 60 && xp >= need(n + 1)) n++; return { n: n + 1, name: LEVELS[Math.min(LEVELS.length - 1, Math.floor(n / 2))], from: need(n), to: need(n + 1), xp }; };
@@ -32,6 +32,7 @@ export const BADGES = [
   ['m10', '⭐', 'Diez días perfectos', '10 días con todas las misiones', g => (g.counts.diaperfecto || 0) >= 10],
   ['b50', '⏳', 'Reloj de arena', '50 bloques de 25 minutos', g => (g.counts.bloque || 0) >= 50],
   ['materia', '👑', 'Jefa vencida', 'Terminaste un libro completo', g => (g.counts.materia || 0) >= 1],
+  ['ad10', '🚀', 'Adelantada', '10 unidades adelantadas', g => (g.counts.adelanto || 0) >= 10],
   ['nv5', '🗝️', 'Llave plateada', 'Llegaste al nivel 5', g => levelOf(g.xp).n >= 5],
   ['nv10', '🩺', 'Bata blanca', 'Llegaste al nivel 10', g => levelOf(g.xp).n >= 10],
 ];
@@ -98,7 +99,7 @@ export async function missionsCheck() {
 // ---------- efectos ----------
 function floatXP(pts) { if (!pts) return; const el = h('div', { class: 'xp-float' }, '+' + pts + ' XP'); document.body.append(el); setTimeout(() => el.remove(), 1600); }
 export function celebrate(title, sub) {
-  const el = h('div', { class: 'game-toast' }, h('b', {}, title), sub ? h('small', {}, sub) : null);
+  const el = h('div', { class: 'game-toast', style: { marginTop: document.querySelectorAll('.game-toast').length * 74 + 'px' } }, h('b', {}, title), sub ? h('small', {}, sub) : null);
   document.body.append(el); setTimeout(() => el.classList.add('out'), 3200); setTimeout(() => el.remove(), 3800);
   const party = h('div', { class: 'coach-party', 'aria-hidden': 'true' }, ...Array.from({ length: 22 }, (_, i) => h('i', { style: { left: (i * 41 % 100) + '%', animationDelay: (i % 7) * .1 + 's' } })));
   document.body.append(party); setTimeout(() => party.remove(), 3800);
