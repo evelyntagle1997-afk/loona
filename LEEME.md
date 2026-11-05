@@ -171,3 +171,10 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - Los resúmenes con IA salen como lámina: ilustración del tema (célula, genética, cuerpo humano, plantas, química, física; mar para lo demás) en plata, blanco y rojo, esquema numerado dibujado por la IA, tarjetas numeradas, tabla resumen, nota «Recuerda», «Tip ENEM» y la curiosidad dentro de un sobre con sello de cera.
 - Se abre como tarjeta pop-up la primera vez que la ves; el esquema está bajo una hoja de papel vegetal que gira al tocarla; la lámina se inclina en 3D con el dedo o el mouse.
 - Otros colores solo cuando identifican algo (sangre arterial/venosa, cloroplastos, indicadores).
+
+## v104 — Cuestionarios ENEM, Mis errores y Cronograma
+- Cada resumen con IA trae «Preguntas ENEM y vestibulares»: preguntas reales del ENEM 2009–2023 sobre el tema (banco en `data/enem/`, de enem.dev, buscado por `/api/enem`) + 5 de práctica estilo vestibular creadas por la IA (marcadas como tales).
+- Si fallas, se abre «Anotar mi error»: fecha, materia, tema, enunciado, lo que respondiste, lo correcto, por qué erraste y tip (Loona puede sugerirlos).
+- Pestañas de la agenda: Materias · Errores · Plan (se quitaron Agenda y Loona).
+- Repaso espaciado: cada error vuelve a los 14 días; si aciertas, a los 30; si fallas, a los 7; dos aciertos seguidos = dominada. Calendario de repasos de 5 semanas.
+- Cronograma: lee el índice de cada PDF (o el sumario con IA) y reparte los capítulos hasta la fecha límite (30/09/2027 por defecto), con días de descanso. Loona te dice cada día qué toca.

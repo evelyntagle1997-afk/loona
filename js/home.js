@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 103;
+export const APP_VERSION = 104;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -45,27 +45,32 @@ export async function renderHome(app, go0) {
       return h('button', { class: 'ag-sub', onclick: () => go(`#/m/${s.id}`) }, h('span', {}, s.name), h('small', {}, `${n} cuad. · ${p} PDF`)); }),
     h('button', { class: 'ag-sub ag-new', onclick: () => newSubject(go) }, h('span', { html: icon('plus', 16) }), h('span', {}, 'Nueva materia')));
   // secciones del índice (se cambian pasando la hoja)
-  const agendaSec = h('div', { class: 'ag-sec', hidden: true, 'data-k': 'agenda' });
-  const loonaSec = h('div', { class: 'ag-sec', hidden: true, 'data-k': 'loona' });
+  const agendaSec = h('div', { class: 'ag-sec', hidden: true, 'data-k': 'errores' });
+  const loonaSec = h('div', { class: 'ag-sec', hidden: true, 'data-k': 'plan' });
   idx.dataset.k = 'materias'; idx.classList.add('ag-sec');
+  // pestaña Errores: cuántas preguntas repasar hoy, por materia, y acceso a todo
   const fillAgenda = async () => {
-    const A = await import('./agenda.js'); const ev = (await A.events(7)).slice(0, 8);
-    agendaSec.replaceChildren(h('p', { class: 'ag-idx-h' }, 'Agenda'),
-      ...(ev.length ? ev.map(e => { const d = new Date(e.start_time); return h('button', { class: 'ag-sub', onclick: () => A.openAgendaView() }, h('span', {}, e.title), h('small', {}, d.toLocaleDateString('es', { weekday: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }))); })
-        : [h('p', { class: 'ag-empty' }, 'Nada agendado. Dile a Loona: «Luny, agenda…»')]),
-      h('button', { class: 'ag-sub ag-new', onclick: () => A.openAgendaView() }, h('span', { html: icon('plus', 16) }), h('span', {}, 'Abrir mi agenda')));
+    const E = await import('./errors.js'); const all = await E.allErrors(), st = await E.errorsSummary();
+    const bySub = {}; all.filter(e => !e.mastered).forEach(e => { bySub[e.subject || 'Sin materia'] = (bySub[e.subject || 'Sin materia'] || 0) + 1; });
+    agendaSec.replaceChildren(h('p', { class: 'ag-idx-h' }, 'Mis errores'),
+      h('button', { class: 'ag-sub', onclick: () => E.reviewSession() }, h('span', {}, st.due ? 'Repasar hoy' : 'Hoy no hay repaso'), h('small', {}, st.due + ' preguntas')),
+      ...Object.entries(bySub).slice(0, 6).map(([k, n]) => h('button', { class: 'ag-sub', onclick: () => E.openErrors() }, h('span', {}, k), h('small', {}, n + (n === 1 ? ' error' : ' errores')))),
+      ...(!all.length ? [h('p', { class: 'ag-empty' }, 'Aún no hay errores. Responde el cuestionario de tus resúmenes: lo que falles aparece aquí y vuelve en 2 semanas.')] : []),
+      h('button', { class: 'ag-sub ag-new', onclick: () => E.openErrors() }, h('span', {}, 'Ver todos y calendario')));
   };
+  // pestaña Plan: lo que toca estudiar hoy según tu cronograma
   const fillLoona = async () => {
-    const L = await import('./loona.js'); const m = await L.memoryText();
-    loonaSec.replaceChildren(h('p', { class: 'ag-idx-h' }, 'Loona'),
-      h('p', { class: 'ag-mem' }, m ? m.split('\n').filter(x => x.trim()).slice(0, 6).join('\n') : 'Todavía no me acuerdo de nada. Cuéntame de ti cuando quieras.'),
-      h('button', { class: 'ag-sub ag-new', onclick: () => L.callLoona() }, h('span', {}, 'Hablar con Loona')));
+    const P = await import('./plan.js'); const plan = await P.getPlan(), today = await P.todayPlan();
+    const days = Math.max(0, Math.ceil((new Date(plan.deadline + 'T12:00') - Date.now()) / 864e5));
+    loonaSec.replaceChildren(h('p', { class: 'ag-idx-h' }, 'Plan de hoy'),
+      ...(today.length ? today.slice(0, 6).map(x => h('button', { class: 'ag-sub', onclick: () => P.openPlan() }, h('span', {}, x.ch.title), h('small', {}, x.subject || x.name))) : [h('p', { class: 'ag-empty' }, plan.books.length ? 'Hoy no hay capítulos nuevos: repasa tus errores.' : 'Agrega tus PDF y armo tu cronograma hasta ' + new Date(plan.deadline + 'T12:00').toLocaleDateString('es', { month: 'long', year: 'numeric' }) + '.')]),
+      h('button', { class: 'ag-sub ag-new', onclick: () => P.openPlan() }, h('span', {}, 'Mi cronograma'), h('small', {}, days + ' días')));
   };
   // pasar la hoja: una página de papel vegetal gira sobre las argollas y aparece la otra sección
   let curTab = 'materias', flipping = false;
   const flipTo = async k => {
     if (k === curTab || flipping) return; flipping = true;
-    if (k === 'agenda') await fillAgenda(); if (k === 'loona') await fillLoona();
+    if (k === 'errores') await fillAgenda(); if (k === 'plan') await fillLoona();
     scene.querySelectorAll('.ag-tabl').forEach(t => t.classList.toggle('on', t.dataset.k === k));
     // sin hoja que gire: solo cambia el contenido
     setTimeout(() => { scene.querySelectorAll('.ag-sec').forEach(x => x.hidden = x.dataset.k !== k); scene.classList.toggle('sec-other', k !== 'materias'); curTab = k; }, 380);
@@ -347,7 +352,7 @@ function flipPage(sc) {
   }, { once: true });
 }
 // (antes: hoja translúcida aparte)
-const TABS = [['materias', 'Materias'], ['agenda', 'Agenda'], ['loona', 'Loona']];
+const TABS = [['materias', 'Materias'], ['errores', 'Errores'], ['plan', 'Plan']];
 // ---------- abrir y cerrar la agenda ----------
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function coverEl() { return document.querySelector('.ag-cover'); }

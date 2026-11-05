@@ -50,10 +50,37 @@ async function yt(q, ctx) {
   return res;
 }
 
+// ---------- preguntas reales del ENEM (2009-2023, de enem.dev) filtradas por tema ----------
+const AREAS = ['ciencias-natureza', 'ciencias-humanas', 'matematica', 'linguagens'];
+const bank = {};
+const norm = t => (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+async function loadArea(env, origin, a) {
+  if (bank[a]) return bank[a];
+  const r = await env.ASSETS.fetch(new Request(origin + '/data/enem/' + a + '.json'));
+  const list = await r.json();
+  return bank[a] = list.map(q => ({ q, t: norm(q.c + ' ' + q.q + ' ' + q.a.map(x => x[1]).join(' ')) }));
+}
+export async function enem(env, origin, areaParam, kwParam, n = 10) {
+  const kws = [...new Set((kwParam || '').split(',').map(k => norm(k).trim()).filter(k => k.length > 2))].slice(0, 14);
+  if (!kws.length) return [];
+  const areas = AREAS.includes(areaParam) ? [areaParam] : AREAS;
+  const scored = [];
+  for (const a of areas) for (const { q, t } of await loadArea(env, origin, a)) {
+    let sc = 0, hits = 0;
+    kws.forEach((k, i) => { const stem = k.length > 6 ? k.slice(0, k.length - 2) : k; const m = t.split(stem).length - 1; if (m) { hits++; sc += Math.min(m, 4) * (i < 3 ? 3 : 1.5); } });
+    if (hits >= Math.min(2, kws.length) || (hits && sc >= 6)) scored.push({ q: { ...q, area: a }, sc: sc + hits * 4 + (q.y - 2009) * .05 });
+  }
+  return scored.sort((x, y) => y.sc - x.sc).slice(0, n).map(x => x.q);
+}
+
 export default {
   async fetch(req, env, ctx) {
     const u = new URL(req.url);
     if (u.pathname === '/api/yt') return yt(u.searchParams.get('q'), ctx);
+    if (u.pathname === '/api/enem') {
+      try { return json({ items: await enem(env, u.origin, u.searchParams.get('area'), u.searchParams.get('k'), Math.min(30, +u.searchParams.get('n') || 12)) }, 200, { 'cache-control': 'public, max-age=86400' }); }
+      catch (e) { return json({ items: [], error: e.message }, 500); }
+    }
     if (u.pathname.startsWith('/api/')) return json({ error: 'no existe' }, 404);
     return env.ASSETS.fetch(req);
   },

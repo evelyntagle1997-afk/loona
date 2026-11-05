@@ -25,7 +25,7 @@ function rollDay() {
 export function stats() { rollDay(); return { min: Math.floor(S.min || 0), goal: goal(), streak: S.streak || 0, left: Math.max(0, goal() - Math.floor(S.min || 0)) }; }
 export const statsLine = () => { const s = stats(); return `Hoy: ${s.min}/${s.goal} min${s.streak ? ' · racha ' + s.streak + (s.streak === 1 ? ' día' : ' días') : ''}`; };
 // lo que Loona sabe para hablarte con contexto
-export function coachCtx() { const s = stats(); return `\nEstudio de Eve hoy: ${s.min} de ${s.goal} minutos efectivos (le faltan ${s.left}); racha: ${s.streak} días seguidos.`; }
+export function coachCtx() { const s = stats(); return `\nEstudio de Eve hoy: ${s.min} de ${s.goal} minutos efectivos (le faltan ${s.left}); racha: ${s.streak} días seguidos.` + briefTxt; }
 
 const studying = () => /^#\/(e|c)\//.test(location.hash);
 let lastAct = Date.now(), hiddenAt = 0, lastNudge = 0, homeSince = Date.now(), started = false;
@@ -50,7 +50,24 @@ export function startCoach() {
     const s = stats(); if (s.left > 0 && Date.now() - lastNudge > 3 * 60000) { lastNudge = Date.now(); say(pick(MSG.back(s.left))); }
   });
   setInterval(tick, 15000);
+  setTimeout(dailyBrief, 6000);
 }
+// una vez al día: qué toca estudiar hoy (cronograma) y cuántas preguntas falladas hay que repasar
+let briefTxt = '';
+async function dailyBrief() {
+  try {
+    const P = await import('./plan.js'), E = await import('./errors.js');
+    const today = await P.todayPlan(), st = await E.errorsSummary();
+    briefTxt = (today.length ? ' Plan de hoy: ' + P.planLine(today) + '.' : '') + (st.due ? ` Preguntas falladas para repasar hoy: ${st.due}.` : '');
+    if (!coachOn() || !briefTxt || S.brief === today_()) return;
+    S.brief = today_(); save();
+    const parts = [];
+    if (today.length) parts.push('Hoy toca ' + P.planLine(today).replace(/ · /g, '; ') + '.');
+    if (st.due) parts.push(`Y tienes ${st.due} ${st.due === 1 ? 'pregunta' : 'preguntas'} de las que fallaste para repasar. Están en la pestaña Errores.`);
+    say('Eve. ' + parts.join(' '));
+  } catch (e) { console.warn('plan', e); }
+}
+const today_ = () => today();
 // al abrir el cuaderno o un PDF: si no hay temporizador, empieza un bloque de 25 min
 function maybeStartBlock() {
   if (!coachOn()) return;

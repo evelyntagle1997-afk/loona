@@ -142,14 +142,20 @@ Devuelve SOLO JSON con esta forma:
    "tema_visual": "la ilustración que mejor va con el tema: celula|genetica|corpo|plantas|quimica|fisica|mar",
    "subtitulo": "una frase que diga de qué trata el tema (máx 12 palabras)",
    "svg": "ESQUEMA DIDÁCTICO del tema en SVG (ver reglas)",
-   "partes": [{"n": 1, "nombre": "nombre de la parte o concepto", "color": "plata|rojo|blanco o, solo si identifica algo, azul|verde|amarillo|morado|naranja|rosa|celeste", "icono": "un emoji que lo represente", "puntos": ["1 a 3 apuntes telegráficos de máx 10 palabras"]}],
+   "usa_colores": false,
+   "leyenda": [{"color": "…", "significa": "…"}],
+   "partes": [{"n": 1, "nombre": "nombre de la parte o concepto", "color": "rojo", "icono": "un emoji que lo represente", "puntos": ["1 a 3 apuntes telegráficos de máx 10 palabras"]}],
    "recuerda": "lo más importante que no puede olvidar (1 frase)",
    "curiosidad": "dato curioso real relacionado (1-2 frases)",
    "tip": "consejo para estudiar o para el ENEM sobre este tema (1 frase)",
    "tabla": {"titulo": "Resumen de …", "columnas": ["…", "…"], "filas": [["…", "…"]]}
- }}
+ },
+ "enem": {"area": "ciencias-natureza|ciencias-humanas|matematica|linguagens", "palabras_pt": ["6 a 12 palabras clave EN PORTUGUÉS para buscar preguntas reales del ENEM sobre este tema, de la más específica a la más general, sin artículos (ej.: mitocôndria, respiração celular, organela, ATP)"]},
+ "practica": [{"estilo": "Fuvest|Unicamp|UNILA|UFPR|UFRGS|UERJ|UNESP", "enunciado": "pregunta de opción múltiple con un pequeño contexto, en portugués como en los vestibulares", "alternativas": {"A": "…", "B": "…", "C": "…", "D": "…", "E": "…"}, "correcta": "A-E", "explicacion": "por qué esa es la correcta y por qué las otras no (2-3 frases en español)"}]}
+PREGUNTAS: "practica" lleva 5 preguntas de práctica ESTILO vestibular sobre los puntos más importantes del tema, creadas por ti (no digas que son de un examen real ni inventes año). Una sola alternativa correcta, distractores plausibles.
 LÁMINA ILUSTRADA (debe ser bonita y funcional, como un cuaderno de estudio de Pinterest):
 - "partes": de 4 a 8. Si el tema tiene partes físicas (célula, órgano, sistema, molécula, planta, aparato) cada parte es una estructura numerada del esquema. Si no (historia, procesos, fórmulas), son etapas, causas o conceptos clave en orden lógico.
+- COLORES DE LAS TARJETAS: por defecto TODAS las partes llevan el MISMO color ("rojo") y "usa_colores": false, "leyenda": []. Solo si las partes pertenecen a categorías distintas que conviene diferenciar (ej.: organelos de célula animal vs. vegetal, arterias vs. venas, metales vs. no metales, causas vs. consecuencias) pon "usa_colores": true, da el mismo color a las partes de la misma categoría y explica cada color en "leyenda". Nunca colores distintos sin una razón.
 - PALETA BASE: negro, plata, blanco y rojo. Usa otro color SOLO para identificar elementos que el tema distingue por color (sangre arterial roja / venosa azul, cloroplastos verdes, indicadores químicos, espectro, átomos), nunca de adorno.
 - "svg": ilustración didáctica real del tema como dibujo de cuaderno sobre fondo negro: viewBox="0 0 400 300", formas simples y redondeadas, rellenos en grises plata (#3A3A3E, #6B6B72, #B9B9BE) con detalles rojos (#D4202C) y, si hace falta identificar algo, el color que corresponda; contornos blancos (#F5F5F5) de 2 px; fondo transparente. Debe mostrar el tema de verdad (la célula con sus organelos, el corazón con sus cavidades, el ciclo con flechas, la línea de tiempo, el gráfico…). Marca cada parte con un círculo negro con borde blanco y su número (el "n" de "partes") en <text> blanco, font-size 14, bold, centrado, unido a la parte con una línea fina blanca. Sin frases dentro del SVG (solo números o fórmulas de 1-3 caracteres). Sin <script>, sin imágenes, sin foreignObject. Máximo 4500 caracteres. Comillas simples dentro del SVG.
 - "tabla": 3 a 6 filas que resuman lo esencial (estructura → función, etapa → qué pasa, fecha → hecho).

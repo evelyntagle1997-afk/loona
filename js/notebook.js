@@ -9,6 +9,7 @@ import { allFamilies, STYLES, addFontFiles, DAFONT, ensureFont, loadAllFonts } f
 import { editImage } from './imageeditor.js';
 import { applyKbMode, sysKeyboard, miniKbOpen, cleanHandwriting } from './minikb.js';
 import { attachPartEditor, relink } from './tpledit.js';
+import { quizSection } from './quiz.js';
 import { TEMPLATES, summaryToMindmap, summaryToTimeline, summaryToCards, summaryTo6 } from './templates.js';
 import { grouped, itemFromHl, condense, catLabel, CATS, quickQuestions, aiSummarize, aiOcr, tesseractOcr, classify } from './summarizer.js';
 
@@ -154,8 +155,13 @@ export class Notebook {
     // la esquina para achicar el título funciona aunque estés con el lápiz
     catcher.addEventListener('pointerdown', e => {
       const g = document.elementsFromPoint(e.clientX, e.clientY).find(n => n.classList?.contains('sum-title-grip'));
-      if (!g) return; e.stopImmediatePropagation(); e.preventDefault();
-      g.dispatchEvent(new PointerEvent('pointerdown', { clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, pointerType: e.pointerType, bubbles: true }));
+      if (g) { e.stopImmediatePropagation(); e.preventDefault();
+        g.dispatchEvent(new PointerEvent('pointerdown', { clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, pointerType: e.pointerType, bubbles: true })); return; }
+      // botones de la lámina y del cuestionario (alternativas, sobre, hoja de transición) se pueden tocar con cualquier herramienta
+      const b = document.elementsFromPoint(e.clientX, e.clientY).map(n => n.closest?.('.sum .quiz-alt, .sum .lam-veil, .sum .lam-env, .sum .qz-fb .chip, .sum .lam-quiz > summary')).find(Boolean);
+      if (!b) return; e.stopImmediatePropagation(); e.preventDefault();
+      const up = ev => { removeEventListener('pointerup', up, true); if (Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 12) b.click(); };
+      addEventListener('pointerup', up, true);
     }, true);
     inner.append(els);
     wrap.append(inner, ink, live, h('div', { class: 'nb-front-wrap' }, front), catcher,
@@ -1035,7 +1041,7 @@ export class Notebook {
     const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.innerText.trim(); };
     const ta = h('textarea', { class: 'field tf-text', rows: 5, placeholder: 'Escribe o pega aquí lo que quieres transformar (o selecciona un texto del cuaderno antes de abrir esto).' }, selEl ? plain(selEl.html) : '');
     const title = h('input', { class: 'field', placeholder: 'Título (opcional)' });
-    let tpl = 'lamina', theme = themeOf(this.subject?.name), items = null, aiTitle = '', lamina = null;
+    let tpl = 'lamina', theme = themeOf(this.subject?.name), items = null, aiTitle = '', lamina = null, enem = null, practica = null;
     const preview = h('div', { class: 'tf-prev' });
     const local = () => (ta.value.split(/(?<=[.!?;])\s+|\n+/).map(x => x.trim()).filter(x => x.length > 3).slice(0, 18))
       .map((t, i) => { const cat = classify(t, 2); return { hl: 'tf' + i, cat, level: 2, text: condense(t, cat, 22) }; });
@@ -1051,7 +1057,7 @@ export class Notebook {
       if (!ta.value.trim()) return ta.focus();
       aiBtn.textContent = 'Ordenando…';
       try { const r = await aiSummarize({ key: s.geminiKey, model: s.geminiModel, title: title.value.trim() || 'Tema', texts: [{ text: ta.value, level: 2 }], subject: this.subject?.name });
-        aiTitle = r.titulo || ''; lamina = r.lamina || null; items = (r.items || []).map((it, i) => ({ hl: 'tf' + i, cat: CATS.some(c => c.k === it.cat) ? it.cat : 'ideas', level: clamp(+it.level || 2, 1, 5), text: it.text }));
+        aiTitle = r.titulo || ''; lamina = r.lamina || null; enem = r.enem || null; practica = r.practica || null; items = (r.items || []).map((it, i) => ({ hl: 'tf' + i, cat: CATS.some(c => c.k === it.cat) ? it.cat : 'ideas', level: clamp(+it.level || 2, 1, 5), text: it.text }));
         draw(); } catch (e) { toast(e.message, 4000); }
       aiBtn.textContent = 'Ordenar con IA';
     } }, 'Ordenar con IA');
@@ -1065,7 +1071,7 @@ export class Notebook {
       actions: [{ label: 'Cancelar' }, { label: 'Ponerlo en mi hoja', primary: true, onclick: () => {
         if (!ta.value.trim()) { toast('Escribe algo primero'); return false; }
         const pg = this.pages[this.curPageIndex()]; if (!pg) return;
-        this.addEl(pg, { type: 'summary', id: db.uid('sum_'), topic: db.uid('tf_'), title: title.value.trim() || aiTitle || 'Mi tema', items: items || local(), layout: 'dos', tpl, theme, lamina, x: 40, y: 50, w: PW - 80, h: 0, rot: 0 }, { select: true });
+        this.addEl(pg, { type: 'summary', id: db.uid('sum_'), topic: db.uid('tf_'), title: title.value.trim() || aiTitle || 'Mi tema', items: items || local(), layout: 'dos', tpl, theme, lamina, enem, practica, x: 40, y: 50, w: PW - 80, h: 0, rot: 0 }, { select: true });
         if (selEl) { pg.els = pg.els.filter(e => e !== selEl); this.renderEls(pg); this.commit(pg); }
         toast('Listo: tu página con estilo');
       } }] });
@@ -1265,7 +1271,8 @@ export class Notebook {
       }
     }
     else if (el.cont && el.title) root.append(h('div', { class: 'sum-cont' }, el.title + ' (continúa)'));
-    if (lam) { lamBody(root, el, lt, this.subject?.name); return root; }
+    const saveEl = pg ? () => this.commit(pg) : null;
+    if (lam) { lamBody(root, el, lt, this.subject?.name); if (!el.cont) root.append(quizSection(el, this.subject?.name, saveEl)); return root; }
     const body = h('div', { class: 'sum-body' });
     for (const g of grouped(el.items)) {
       body.append(h('section', { class: 'sum-sec cat-' + g.k },
@@ -1285,6 +1292,7 @@ export class Notebook {
       ));
     }
     if (ola) root.append(h('span', { class: 'ola-sign' }, '@loona·' + (this.subject?.name || 'apuntes').toLowerCase().replace(/\s+/g, '')));
+    if (!el.cont && (el.enem || el.practica || el.enemQs)) root.append(quizSection(el, this.subject?.name, saveEl));
     if (el.ai?.preguntas?.length) root.append(h('details', { class: 'sum-quiz' }, h('summary', {}, `Repaso (${el.ai.preguntas.length} preguntas)`),
       ...el.ai.preguntas.map(q => h('details', { class: 'q' }, h('summary', {}, q.q), h('p', {}, q.a)))));
 
@@ -1323,6 +1331,7 @@ export class Notebook {
       first.el.ai = { explicacion: r.explicacion, analogia: r.analogia, mnemotecnia: r.mnemotecnia, preguntas: r.preguntas || [], model: r.model };
       first.el.stickerHint = (r.stickers || []).join(' ');
       if (r.lamina) first.el.lamina = r.lamina;
+      if (r.enem) { first.el.enem = r.enem; delete first.el.enemQs; } if (r.practica) first.el.practica = r.practica;
       this.renderEls(first.pg); this.commit(first.pg);
       if (manual) toast('Listo: resumen mejorado con IA');
     } catch (e) {
@@ -1412,8 +1421,11 @@ function lamBody(root, el, lt, subject) {
   const L = el.lamina || {};
   if (L.subtitulo) root.append(h('p', { class: 'lam-sub' }, L.subtitulo));
   // tarjetas: las partes del esquema (con IA) o las categorías del resumen (sin IA)
-  let cards = (L.partes || []).filter(p => p && p.nombre).slice(0, 10).map((p, i) => ({ n: p.n || i + 1, name: p.nombre, color: lamCol(p.color), icon: p.icono || '', pts: (p.puntos || []).map(t => ({ html: fmtItem(t) })) }));
-  if (!cards.length) cards = grouped(el.items).map((g, i) => ({ n: i + 1, name: OLA_Q[g.k] || g.label, color: i % 3 === 1 ? '#D4202C' : '#C9CED6', icon: '', pts: g.list.map(it => ({ html: fmtItem(it.text), hl: it.hl })) }));
+  // todas las tarjetas del mismo color (rojo); colores distintos solo si marcan categorías, con su leyenda
+  const byCat = L.usa_colores === true && (L.leyenda || []).length > 0;
+  let cards = (L.partes || []).filter(p => p && p.nombre).slice(0, 10).map((p, i) => ({ n: p.n || i + 1, name: p.nombre, color: byCat ? lamCol(p.color) : '#D4202C', icon: p.icono || '', pts: (p.puntos || []).map(t => ({ html: fmtItem(t) })) }));
+  if (!cards.length) cards = grouped(el.items).map((g, i) => ({ n: i + 1, name: OLA_Q[g.k] || g.label, color: '#D4202C', icon: '', pts: g.list.map(it => ({ html: fmtItem(it.text), hl: it.hl })) }));
+  if (byCat) root.append(h('div', { class: 'lam-legend' }, ...L.leyenda.slice(0, 6).map(x => h('span', {}, h('i', { style: { background: lamCol(x.color) } }), x.significa))));
   const card = c => h('div', { class: 'lam-card', style: { '--cc': c.color } },
     h('div', { class: 'lam-ch' }, h('b', { class: 'lam-n' }, String(c.n)), c.icon && h('span', { class: 'lam-ic' }, c.icon), h('span', {}, c.name)),
     h('ul', {}, ...c.pts.map(p => h('li', {}, h('span', { html: p.html, ...(p.hl ? { 'data-edit': 'item:' + p.hl } : {}) })))));
