@@ -33,7 +33,7 @@ if ((navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwa
 installKeyboardGuard();   // el teclado del celular no aparece dentro de la app
 mountLoona();
 import('./coach.js').then(m => m.startCoach()).catch(() => { });   // Loona entrenadora: tiempo de estudio, meta y empujones
-import('./handsfree.js').then(m => m.resume()).catch(() => { });             // Loona: botón de la luna para conversar
+import('./handsfree.js').then(m => m.autoStart()).catch(() => { });   // Loona escucha siempre (di «Luny…»)             // Loona: botón de la luna para conversar
 addEventListener('pointerdown', () => { if (!/^#\/(e|c)\//.test(location.hash)) greet('home'); }, { once: true });
 addEventListener('hashchange', route);
 loadGoogleFonts();

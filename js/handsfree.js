@@ -32,9 +32,19 @@ export async function start(user) {
   if (user && on) { bubble('Te escucho. Di «Luny» y lo que quieras.'); }
 }
 export function stop(user) {
-  on = false; try { localStorage.removeItem(KEY); } catch { }
+  on = false; try { localStorage.setItem(KEY, user ? '0' : (localStorage.getItem(KEY) || '1')); } catch { }
   engine?.stop(); engine = null; mark(null);
   if (user) bubble('Ok. Ya no escucho.');
+}
+// Loona escucha SIEMPRE (como Alexa): se activa sola al abrir la app, salvo que la apagues en Ajustes → IA.
+// La primera vez el navegador pide permiso para el micrófono (al primer toque en la pantalla).
+export async function autoStart() {
+  let pref = null; try { pref = localStorage.getItem(KEY); } catch { }
+  if (pref === '0') return;
+  let st = null; try { st = (await navigator.permissions?.query({ name: 'microphone' }))?.state; } catch { }
+  if (st === 'denied') return;
+  if (st === 'granted') return start(false);
+  addEventListener('pointerdown', () => start(false), { once: true, capture: true });   // el permiso necesita un toque
 }
 // al abrir la app: si lo dejaste prendido, vuelve solo (si el navegador ya dio permiso al micrófono)
 export async function resume() {
@@ -101,7 +111,7 @@ async function startVAD() {
   const ac = new (window.AudioContext || window.webkitAudioContext)(); const an = ac.createAnalyser(); an.fftSize = 1024;
   ac.createMediaStreamSource(stream).connect(an); const buf = new Float32Array(an.fftSize);
   const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find(t => window.MediaRecorder?.isTypeSupported?.(t)) || '';
-  let alive = true, noise = .01, mr = null, chunks = [], t0 = 0, quiet = 0, lastSend = 0, sending = false, timer = 0;
+  let alive = true, noise = .01, mr = null, chunks = [], t0 = 0, quiet = 0, lastSend = 0, sending = false, timer = 0, loud = 0;
   const finish = () => {
     const rec = mr; mr = null; if (!rec) return;
     rec.onstop = async () => {
@@ -127,7 +137,8 @@ async function startVAD() {
     const thr = Math.max(.02, noise * 3);
     if (!mr) {
       noise = noise * .97 + Math.min(rms, .05) * .03;   // aprende el ruido del cuarto (música, ventilador)
-      if (rms > thr) { chunks = []; mr = new MediaRecorder(stream, mt ? { mimeType: mt, audioBitsPerSecond: 24000 } : {}); mr.ondataavailable = e => e.data.size && chunks.push(e.data); mr.start(200); t0 = Date.now(); quiet = 0; }
+      loud = rms > thr ? loud + 1 : 0;
+      if (loud >= 3) { loud = 0; chunks = []; mr = new MediaRecorder(stream, mt ? { mimeType: mt, audioBitsPerSecond: 24000 } : {}); mr.ondataavailable = e => e.data.size && chunks.push(e.data); mr.start(200); t0 = Date.now(); quiet = 0; }
     } else {
       if (rms > thr * .7) quiet = 0; else quiet += 100;
       if (quiet > 900 || Date.now() - t0 > 12000) finish();

@@ -207,3 +207,9 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 ## v110 — La luna es solo voz
 - Tocar la luna (o el ámbar) abre una ventanita con un micrófono: Loona te escucha al instante; tocarla otra vez cuelga. Se cierra sola al despedirte o al poner música.
 - Los ajustes de Loona (nombre, voz, meta diaria, empujones, manos libres, memoria) se movieron a Ajustes → IA.
+
+## v111–v113 — Actualización automática y Loona como Alexa
+- La app se actualiza y recarga sola cuando hay versión nueva.
+- La luna ya no abre ventana: brilla y late mientras escucha.
+- Loona escucha siempre desde que abres la app (di «Luny…» / «Loona…»); no hay que tocar nada. La primera vez pide permiso de micrófono. Se apaga en Ajustes → IA → «Me escucha siempre».
+- PC: dictado del navegador (gratis, sin pitidos). Android: detector de voz + Gemini (sin pitidos; si Gemini descansa, pasa al dictado del celular).

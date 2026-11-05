@@ -446,9 +446,9 @@ export { talkAudio };
 // fila "Manos libres" en el panel
 function hfRow() {
   const b = h('button', { class: 'chip', onclick: async () => { const m = await import('./handsfree.js'); await m.toggle(); paint(m); } }, 'Manos libres');
-  const paint = m => { b.classList.toggle('on', m.isOn()); b.textContent = m.isOn() ? 'Manos libres: sí (di «Loona…»)' : 'Manos libres: no'; };
+  const paint = m => { b.classList.toggle('on', m.isOn()); b.textContent = m.isOn() ? 'Me escucha siempre: sí (di «Luny…»)' : 'Me escucha siempre: no'; };
   import('./handsfree.js').then(paint);
-  return h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Sin tocar nada:'), b);
+  return h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Como Alexa:'), b);
 }
 export function callLoona() { if (!panel) toggle(); }
 // la luna: solo voz. Un toque = Loona te escucha (la luna brilla); otro toque = cuelga. Sin ventanas ni botones.
