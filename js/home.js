@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 107;
+export const APP_VERSION = 108;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -96,7 +96,7 @@ export async function renderHome(app, go0) {
     deco('corazon', 29.2, 57, 7, 'rotate(-7deg)', 'Dato de medicina para el ENEM', medFact),
     deco('sello', 66, 72, 9.6, 'rotate(-8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     portada(),
-    hot('ag-charm', 36.6, 53, 4.4, 17, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
+    hot('ag-charm', 37.4, 35, 5.4, 18, 'Cristal ámbar: conversar con Loona', () => import('./loona.js').then(m => m.callLoona())),
     hot('ag-medal', 41.6, 54, 4.4, 7, 'Medallón: temporizador de estudio', () => pomodoro()),
     hot('ag-key', 39.6, 61.5, 4.2, 12, 'Llave: Loona te escucha siempre (manos libres)', () => import('./handsfree.js').then(m => m.toggle())),
     h('img', { class: 'ag-z ag-clipimg', src: 'img/clip.webp', alt: '', draggable: false, style: { left: '24.4%', top: '0%', width: '7.4%' } }),

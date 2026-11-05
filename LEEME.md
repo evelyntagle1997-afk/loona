@@ -195,3 +195,6 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - La agenda cerrada tiene proporción A5 (148 × 210) y queda centrada; al abrirla se desliza a su lugar.
 - Dije realista nuevo (`img/dije-real.webp`) por fuera de la tapa y dentro de la agenda, colgado de la argolla y meciéndose; se quitó el dije viejo de la foto.
 - Polaroid ya no tapa la nota «XOXO, Loona»; sombras de contacto suaves en tarjetas, notas y adornos.
+
+## v108 — Ámbar anguloso
+- Dije nuevo con el cristal ámbar facetado y anguloso (como el original), colgado de la argolla por dentro y del borde por fuera; la zona para tocar el ámbar se movió con él.

@@ -2074,3 +2074,8 @@ html.lite .ag-dije-in, html.lite .agenda.closed .ag-dije-out { animation: none !
 .ag-deco img, .ag-deco { filter: drop-shadow(.25cqw .45cqw .35cqw rgba(0,0,0,.55)) drop-shadow(0 .05cqw .08cqw rgba(0,0,0,.6)); }
 .ag-card { box-shadow: 0 .35cqw .6cqw -.15cqw rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.25) !important; }
 .ag-note { box-shadow: .3cqw .6cqw 1cqw -.2cqw rgba(0,0,0,.75) !important; }
+/* v108: dije con ámbar anguloso (proporción nueva de la imagen) */
+.ag-dije-out { left: 30.3% !important; top: 18.5% !important; width: 6.2% !important; transform-origin: 49% 4% !important; }
+.ag-dije-in { left: 41.2% !important; top: 35.6% !important; width: 8.6% !important; transform-origin: 49% 4% !important; }
+.ag-dije-in { left: 41.8% !important; top: 27.8% !important; }
+.ag-dije-in { left: 42.5% !important; }
