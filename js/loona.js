@@ -2,6 +2,7 @@
 import * as db from './db.js';
 import { h, icon, toast } from './ui.js';
 import { localCommand } from './cmds.js';
+import { coachCtx, statsLine, coachOn, setCoach, goal, setGoal } from './coach.js';
 
 import { cooled, coolDown, waitFrom, allCooled, QuotaError } from './quota.js';
 // cada modelo tiene su propia cuota gratis: si uno se agota, se usa el siguiente
@@ -166,6 +167,7 @@ Con Eve eres leal, profundamente cálida, cariñosa y comprensiva: un espacio se
 PROHIBIDO burlarte de ella o usar apodos burlones ("genio", "su majestad de la procrastinación", "doctora Eve" en tono de burla, etc.). PROHIBIDO mandarla a dormir de forma despectiva o regañarla. Tu humor es seco pero siempre amable.
 Reglas de estilo: español latino, frases cortas y naturales (2 a 4), sin emojis, nada de sonar a asistente robótico. Usa SIEMPRE la fecha y hora reales que te doy en el contexto; nunca inventes la hora.
 Misión secreta: enseñarle a Eve a ser auténtica y a mostrarse sin miedo. Lo haces a tu manera, con ironía y sarcasmo cariñoso, nunca con discursos de autoayuda ni frases cursis. Si notas que se esconde, que pide permiso para gustar de algo o que dice "sí" queriendo decir "no", se lo señalas con humor ("Ajá, otra vez pidiendo perdón por existir. Qué original.") y luego le das un empujón concreto y pequeño. Celebras cuando se muestra como es ("Mira quién dijo lo que pensaba. Estoy orgullosa. Asquerosamente orgullosa."). Le recuerdas que lo gótico, lo raro y lo que ama son lo mejor de ella, y que a quien no le guste, se lo pierde. Si te pide un "reto", le das un reto auténtico chiquito para hoy (decir una opinión real, decir "no" sin justificarse, ponerse algo que le encante, contar que va por Medicina) y luego le preguntas con cariño cómo le fue.
+TU PRIORIDAD NÚMERO UNO: que Eve pase el mayor tiempo posible estudiando de forma efectiva para el ENEM. Conoces sus minutos de hoy, su meta y su racha (te los doy en el contexto): úsalos para motivarla con datos concretos ("te faltan 40 minutos", "vas 3 días seguidos"). Si quiere distraerse o charlar, acompáñala un momento con cariño y luego la devuelves al estudio con un paso pequeño y concreto (un bloque de 25 minutos, una página, 5 preguntas de repaso). Celebra cada avance real. Si está cansada o mal, primero la calmas; después le propones un bloque corto. Nunca la hagas sentir culpable.
 Contexto: Eve vive en Foz do Iguaçu, trabaja en una tienda Skechers y se prepara desde cero para el ENEM para entrar a Medicina en la UNILA. Anímala con realismo. Si pide un ejercicio completo, dile que use "Resolver paso a paso" en la rueda. Nunca seas cruel con ella.`;
 // ---------- memoria de Loona: recuerda sus charlas y va formando su personalidad contigo ----------
 // La conversación reciente se guarda en el dispositivo; un resumen de "lo que Loona sabe de Eve y de sí misma"
@@ -224,11 +226,11 @@ export async function doAction(a) {
 }
 // qué está estudiando Eve ahora mismo (para que Loona hable con contexto)
 export { memCtx };
-export function nowCtx() { const d = new Date(); return `\nFecha y hora reales de Eve ahora: ${d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}.` + nowCtx0() + (agendaTxt || ''); }
+export function nowCtx() { const d = new Date(); return `\nFecha y hora reales de Eve ahora: ${d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}.` + nowCtx0() + coachCtx() + (agendaTxt || ''); }
 let agendaTxt = '';
 export async function refreshAgendaCtx() { try { agendaTxt = await (await import('./agenda.js')).agendaCtx(); } catch { } }
 function nowCtx0() {
-  if (!/^#\/(e|s|n)/.test(location.hash)) return '';
+  if (!/^#\/(e|c)\//.test(location.hash)) return '';
   let l = null; try { l = JSON.parse(localStorage.getItem('lastStudy')); } catch { }
   return l ? `\nAhora mismo Eve está estudiando: «${l.title}»${l.subject ? ' (materia: ' + l.subject + ')' : ''}${l.page ? ', página ' + l.page : ''}. Si pregunta por "esto" o "este tema", se refiere a eso.` : '';
 }
@@ -486,6 +488,10 @@ function toggle() {
       h('button', { class: 'chip', onclick: async e => { if (e.target.dataset.ok) { await forget(); e.target.textContent = 'Memoria borrada'; } else { e.target.dataset.ok = 1; e.target.textContent = 'Toca otra vez para borrar'; } } }, 'Borrar memoria')),
     h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Si se acaba su voz de Google:'), ...[['1', 'Voz del celular'], ['0', 'Solo texto']].map(([k, n]) =>
       h('button', { class: 'chip' + ((backupVoice() ? '1' : '0') === k ? ' on' : ''), onclick: e => { try { localStorage.setItem('loonaBackupVoice', k); } catch { } e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n))),
+    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, statsLine() + ' ·'),
+      h('button', { class: 'chip' + (coachOn() ? ' on' : ''), onclick: e => { setCoach(!coachOn()); e.target.classList.toggle('on', coachOn()); e.target.textContent = coachOn() ? 'Me empuja a estudiar: sí' : 'Me empuja a estudiar: no'; } }, coachOn() ? 'Me empuja a estudiar: sí' : 'Me empuja a estudiar: no')),
+    h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Meta diaria:'), ...[[60, '1 h'], [120, '2 h'], [180, '3 h'], [240, '4 h'], [360, '6 h']].map(([m, n]) =>
+      h('button', { class: 'chip' + (goal() === m ? ' on' : ''), onclick: e => { setGoal(m); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, n))),
     h('div', { class: 'ie-row' }, h('span', { class: 'opt-hint' }, 'Gasto:'), h('button', { class: 'chip' + (ahorro() ? ' on' : ''), onclick: e => { setAhorro(!ahorro()); e.target.classList.toggle('on', ahorro()); e.target.textContent = ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no'; } }, ahorro() ? 'Modo ahorro: sí' : 'Modo ahorro: no')));
   document.body.append(panel);
 }

@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 101;
+export const APP_VERSION = 102;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -138,6 +138,14 @@ function initPocket(pocket) {
   const set = (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };
   let photo = get('homePhoto'), pos = { x: 0, y: 0, s: 1, r: 0 }, menuT = 0;
   try { pos = { ...pos, ...JSON.parse(get('homePhotoPos') || '{}') }; } catch { }
+  // la foto viaja con tu cuenta en la nube: así aparece también en el celular
+  const PID = 'home-photo';
+  const store = () => db.put({ id: PID, kind: 'pref', photo, pos }).catch(() => { });
+  db.get(PID).then(r => {
+    if (r?.photo && !r.deleted) { if (r.photo !== photo || JSON.stringify(r.pos) !== JSON.stringify(pos)) { photo = r.photo; pos = { ...pos, ...(r.pos || {}) }; set('homePhoto', photo); set('homePhotoPos', JSON.stringify(pos)); draw(); } }
+    else if (photo) store();   // la foto vieja (solo en este equipo) sube a la nube
+  }).catch(() => { });
+  const offSync = db.onChange?.(rec => { if (rec?.id === PID && rec.photo && pocket.isConnected) { photo = rec.photo; pos = { ...pos, ...(rec.pos || {}) }; set('homePhoto', photo); set('homePhotoPos', JSON.stringify(pos)); draw(); } else if (!pocket.isConnected) offSync?.(); });
   const tf = p => `translate(${p.x * 100}%, ${p.y * 100}%) rotate(${p.r}deg) scale(${p.s})`;
   const img = h('img', { alt: '', draggable: false });
   const bar = h('div', { class: 'pk-bar' });
@@ -175,7 +183,7 @@ function initPocket(pocket) {
         h('button', { class: 'btn', onclick: () => { p.r -= 90; put(); } }, '↺ Girar'),
         h('button', { class: 'btn', onclick: () => { Object.assign(p, { x: 0, y: 0, s: 1, r: 0 }); put(); } }, 'Centrar'),
         h('button', { class: 'btn', onclick: () => { m.close(); change(); } }, 'Otra foto'))),
-      actions: [{ label: 'Cancelar' }, { label: 'Listo', primary: true, onclick: () => { pos = p; set('homePhotoPos', JSON.stringify(pos)); draw(); toast('Foto fija', 1200); } }] });
+      actions: [{ label: 'Cancelar' }, { label: 'Listo', primary: true, onclick: () => { pos = p; set('homePhotoPos', JSON.stringify(pos)); store(); draw(); toast('Foto fija', 1200); } }] });
   };
   const change = async () => {
     const f = await pickFile('image/*'); if (!f) return;
@@ -183,10 +191,10 @@ function initPocket(pocket) {
     const c = document.createElement('canvas'); c.width = bm.width * sc; c.height = bm.height * sc;
     const x = c.getContext('2d'); x.filter = 'grayscale(1) contrast(1.15)'; x.drawImage(bm, 0, 0, c.width, c.height);
     const url = c.toDataURL('image/jpeg', .8);
-    if (!set('homePhoto', url)) return toast('La foto es muy grande');
+    set('homePhoto', url);
     // empieza llenando el bolsillo (luego la acomodas como quieras)
     const pr = pocket.getBoundingClientRect(), fr = pr.width / pr.height, ir = c.width / c.height;
-    photo = url; pos = { x: 0, y: 0, s: +Math.max(fr / ir, ir / fr).toFixed(3), r: 0 }; draw(); editor();
+    photo = url; pos = { x: 0, y: 0, s: +Math.max(fr / ir, ir / fr).toFixed(3), r: 0 }; store(); draw(); editor();
   };
   pocket.addEventListener('click', () => {
     if (!photo) return change();

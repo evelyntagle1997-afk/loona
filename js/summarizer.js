@@ -139,26 +139,33 @@ Devuelve SOLO JSON con esta forma:
  "preguntas": [{"q": "pregunta de repaso", "a": "respuesta corta"}],
  "stickers": ["2 a 4 palabras clave del tema en español para elegir ilustraciones"]}
 Reglas: LO MÁS CONCISO POSIBLE. Estilo apunte telegráfico: 'Concepto: idea clave', sin artículos ni relleno, máx 12 palabras por item; une fragmentos repetidos en un solo item; corrige errores de lectura (OCR) del texto escaneado. No inventes datos que no estén en los fragmentos salvo en explicacion/analogia (máx 2 frases cortas). Mantén el nivel de importancia que puso la estudiante. COLORES: el resumen va en hoja negra con letras blancas y azules (modelo «ola»), pero si un color es NECESARIO para entender (sangre arterial/venosa, indicadores químicos, colores de llamas, espectro, partes de un esquema que se distinguen por color), es obligatorio marcarlo así: [[rojo:sangre arterial]], [[azul:sangre venosa]] (colores: rojo, azul, verde, amarillo, morado, naranja, rosa, celeste, marron, gris). No uses color si no aporta a la explicación.`;
-  const models = [model || 'gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash'];
-  let lastErr;
-  for (const m of [...new Set(models)]) {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.4 } }),
-    });
-    if (r.status === 404) { lastErr = new Error(`El modelo ${m} no existe`); continue; }
+  const { cooled, coolDown, waitFrom } = await import('./quota.js');
+  const models = [...new Set([model, 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'].filter(Boolean))];
+  let lastErr, quota = false;
+  for (const m of models) {
+    if (cooled(m)) { quota = true; continue; }
+    let r;
+    try {
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.4, maxOutputTokens: 8192 } }),
+      });
+    } catch { throw new Error('Sin conexión a internet.'); }
+    if (r.status === 429) { quota = true; coolDown(m, waitFrom(await r.text().catch(() => ''))); continue; }
+    if (r.status === 404) { coolDown(m, 3 * 864e5); lastErr = new Error(`El modelo ${m} no existe`); continue; }
     if (!r.ok) {
       const t = await r.text();
-      if (r.status === 400 && /API key/i.test(t)) throw new Error('La clave de Gemini no es válida. Revísala en Ajustes.');
-      if (r.status === 429) throw new Error('Gemini alcanzó el límite gratuito por ahora. Se usó el resumen sin IA.');
-      throw new Error('Gemini respondió con error ' + r.status);
+      if (/API key|API_KEY/i.test(t) && !/model/i.test(t)) throw new Error('La clave de Gemini no es válida. Revísala en Ajustes.');
+      lastErr = new Error('Gemini respondió con error ' + r.status); continue;
     }
     const j = await r.json();
     const txt = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-    const data = JSON.parse(txt.replace(/^```json\s*|```$/g, ''));
+    let data;
+    try { data = JSON.parse(txt.replace(/^```json\s*|```$/g, '')); } catch { lastErr = new Error('La IA devolvió algo incompleto; prueba otra vez.'); continue; }
     data.model = m;
     return data;
   }
+  if (quota) throw new Error('Gemini llegó a su límite gratis por ahora (todos los modelos). Se usó el resumen sin IA.');
   throw lastErr || new Error('No se pudo usar Gemini');
 }
 

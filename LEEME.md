@@ -160,3 +160,9 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - Canta o tararea un pedazo y Loona pone la canción (con la letra también funciona: «pon la que dice…»).
 - Si se acaba la voz de Google, habla con la voz del celular (panel de Loona → «Si se acaba su voz de Google»).
 - En Android, si Gemini descansa, la escucha continua pasa al dictado gratis del celular (puede sonar un pitido).
+
+## v102 — Loona entrenadora y foto en todos tus equipos
+- Loona cuenta tus minutos de estudio efectivo (cuaderno o PDF abierto y tú activa), con meta diaria (1–6 h) y racha de días.
+- Al abrir un cuaderno empieza sola un bloque de 25 min; cada bloque te felicita y te da 5 min de descanso; si te quedas quieta 4 min o te vas a otra app, te llama de vuelta; al cumplir la meta, celebra.
+- Panel de Loona: «Me empuja a estudiar: sí/no» y «Meta diaria».
+- La foto del bolsillo ahora se guarda en la nube: aparece en el celular al entrar con tu cuenta.

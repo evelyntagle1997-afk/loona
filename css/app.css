@@ -1854,3 +1854,10 @@ body:has(.ag-home) #loona-fab { display: none !important; }
 .sum.tpl-ola .sum-empty { color: var(--o4) !important; font-family: 'Kalam', cursive; padding: 0 7%; }
 .sum.tpl-ola .sum-cont { font-family: 'Pacifico', cursive !important; color: var(--o4) !important; padding: 14px 7% 6px; }
 .sum.tpl-ola .sum-title-grip { background: var(--o4) !important; }
+
+/* ============ v102: celebración de meta cumplida (plata y rojo) ============ */
+.coach-party { position: fixed; inset: 0; pointer-events: none; z-index: 90; overflow: hidden; }
+.coach-party i { position: absolute; top: -12px; width: 7px; height: 12px; border-radius: 2px; background: #E9E9EC; animation: coachfall 3.6s cubic-bezier(.3,.6,.4,1) forwards; }
+.coach-party i:nth-child(3n) { background: #D4202C; } .coach-party i:nth-child(4n) { background: #9A9AA0; width: 9px; height: 9px; border-radius: 50%; }
+@keyframes coachfall { to { transform: translateY(105vh) rotate(540deg); opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .coach-party { display: none; } }
