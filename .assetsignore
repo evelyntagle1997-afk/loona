@@ -7,3 +7,4 @@ node_modules
 *.png.orig
 .wrangler
 .gitignore
+resumen-ola-v101.png
