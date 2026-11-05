@@ -38,7 +38,7 @@ export function quizSection(el, subject, save) {
         feedback.replaceChildren(h('b', {}, ok ? '¡Correcto! ' : `Era la ${q.correct}. `), q.explicacion || '',
           !ok ? h('button', { class: 'chip', onclick: e => { e.stopPropagation(); recordError({ ...q, mine: L, subject, topic: el.title }); } }, 'Anotar mi error') : null);
         if (fresh && !ok) recordError({ ...q, mine: L, subject, topic: el.title });
-        if (fresh) import('./loona.js').then(m => m.bubble(ok ? 'Bien, Eve.' : 'Tranquila: de los errores se aprende. Anótalo.'));
+        if (fresh) { import('./loona.js').then(m => m.bubble(ok ? 'Bien, Eve.' : 'Tranquila: de los errores se aprende. Anótalo.')); import('./game.js').then(G => G.award(ok ? 'quiz_ok' : 'quiz_fail', { topic: el.title })); }
       };
       q.alts.forEach(([L, t]) => alts.append(h('button', { class: 'quiz-alt', 'data-l': L, onclick: e => { e.stopPropagation(); setAns(q.qid, L); mark(L, true); } }, h('b', {}, L + ')'), ' ', h('span', { html: richText(t) }))));
       wrap.append(h('div', { class: 'qz' + (q.real ? ' real' : '') }, h('p', { class: 'qz-src' }, `${k + 1}. ${q.source}`), h('div', { class: 'qz-stem', html: richText(q.stem) }), alts, feedback));

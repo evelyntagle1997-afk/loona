@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 104;
+export const APP_VERSION = 105;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -87,11 +87,11 @@ export async function renderHome(app, go0) {
       h('span', { class: 'ag-xo' }, noteText() || (subjects.length ? saludo().line : 'crea tu primera materia')),
       h('span', { class: 'ag-sign' }, 'XOXO, Loona')),
     card('c1' + (lastOk ? '' : ' dim'), 8.5, 23.6, 10.8, lastOk ? 'Seguir estudiando' : 'Sin pendientes', lastOk ? lastS.title + (lastS.page ? ' · pág. ' + lastS.page : '') : '', () => lastOk && go(lastS.hash)),
-    card('c2', 8.5, 31, 10.8, 'Nueva materia', '', () => newSubject(go)),
+    card('c2 ag-today', 8.5, 31, 10.8, 'Plan de hoy', 'cargando…', () => import('./plan.js').then(m => m.openPlan())),
     card('c3', 8.5, 38.2, 10.8, 'Música', 'YouTube', () => import('./music.js').then(m => m.openMusic())),
     card('c4', 8.5, 45, 16.4, 'Ambiente', ambPlaying() ? 'sonando' : 'lluvia, chimenea…', e => ambientMenu(e.currentTarget)),
     pocket,
-    deco('polaroid', 31.4, 41.4, 8, 'rotate(6deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
+    deco('polaroid', 28.3, 37.6, 7.4, 'rotate(5deg)', 'Polaroid: tu reto auténtico de hoy', autentica),
     deco('corazon', 29.2, 57, 7, 'rotate(-7deg)', 'Dato de medicina para el ENEM', medFact),
     deco('sello', 66, 72, 9.6, 'rotate(-8deg)', lastOk ? 'Sello: seguir estudiando' : 'Sello: nueva materia', () => lastOk ? go(lastS.hash) : newSubject(go)),
     portada(),
@@ -117,13 +117,20 @@ export async function renderHome(app, go0) {
     h('div', { class: 'agc-back' }));
   scene.append(h('div', { class: 'ag-desk', 'aria-hidden': 'true' }), h('img', { class: 'ag-dije-out', src: 'img/dije-fuera.webp', alt: '', draggable: false }), cover);
   cover.addEventListener('click', () => openAgenda());
+  // tarjeta «Plan de hoy»: capítulos que tocan hoy y preguntas para repasar
+  Promise.all([import('./plan.js').then(m => m.todayPlan()), import('./errors.js').then(m => m.errorsSummary())]).then(([t, e]) => {
+    const c = scene.querySelector('.ag-today small'); if (!c) return;
+    const parts = []; if (t.length) parts.push(t.length + (t.length === 1 ? ' capítulo' : ' capítulos')); if (e.due) parts.push(e.due + ' repaso' + (e.due === 1 ? '' : 's'));
+    c.textContent = parts.join(' · ') || 'arma tu cronograma';
+  }).catch(() => { });
   const vp = h('div', { class: 'ag-vp' }, scene);
   // la agenda espera cerrada hasta que la toques
   // la nota cambia sola con la hora (madrugada, mañana, tarde, noche)
   const tick = setInterval(() => { if (!scene.isConnected) return clearInterval(tick); const g = saludo(); const q = c => scene.querySelector(c);
     if (q('.ag-hi')) q('.ag-hi').textContent = g.hi; if (q('.ag-date')) q('.ag-date').textContent = g.date; if (!noteText() && subjects.length && q('.ag-xo')) q('.ag-xo').textContent = g.line; }, 60000);
+  const hudEl = (await import('./game.js')).hud(); hudEl.classList.add('ag-hud');
   app.replaceChildren(h('div', { class: 'home ag-home' },
-    h('h1', { class: 'sr-only' }, 'Loona'),
+    h('h1', { class: 'sr-only' }, 'Loona'), hudEl,
     vp,
     h('nav', { class: 'dock leather-strip ag-dock' },
       cloud,

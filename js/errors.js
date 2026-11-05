@@ -54,6 +54,7 @@ function grade(e, ok) {
   e.reviews = [...(e.reviews || []), { date: Date.now(), ok }];
   if (ok) { e.step = (e.step || 0) + 1; if (e.step >= 2) e.mastered = true; else e.due = startOfDay(Date.now()) + INTERVALS.ok1 * DAY; }
   else { e.step = 0; e.due = startOfDay(Date.now()) + INTERVALS.fail * DAY; }
+  import('./game.js').then(G => G.award(ok ? 'repaso_ok' : 'repaso_fail', { topic: e.topic })).catch(() => { });
   return db.put(e);
 }
 export async function reviewSession(list) {

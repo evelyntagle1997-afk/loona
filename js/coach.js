@@ -82,6 +82,8 @@ export async function tick() {
   if (vis && studying() && now - lastAct < 120000 && !onBreak()) {   // estudio efectivo: pantalla de estudio abierta y tú activa
     S.min = (S.min || 0) + .25; save();
     const blocks = Math.floor(S.min / 25);
+    if (blocks > (S.blocks || 0)) { import('./game.js').then(G => G.award('bloque')).catch(() => { }); if (!coachOn()) { S.blocks = blocks; save(); } }
+    trackPdf();
     if (coachOn() && blocks > (S.blocks || 0)) {
       S.blocks = blocks; save();
       if (!S.goalDone && S.min >= goal()) { S.goalDone = true; save(); say(pick(MSG.goal(Math.floor(S.min)))); celebrate(); }
@@ -99,4 +101,19 @@ function celebrate() {
   const el = h('div', { class: 'coach-party', 'aria-hidden': 'true' }, ...Array.from({ length: 26 }, (_, i) => h('i', { style: { left: (i * 37 % 100) + '%', animationDelay: (i % 9) * .12 + 's' } })));
   document.body.append(el); setTimeout(() => el.remove(), 4200);
   toast('Meta de hoy cumplida · ' + statsLine(), 4000);
+}
+
+// páginas del PDF que de verdad leíste: si cubres una unidad del cronograma, se marca sola
+const VK = 'pdfSeen';
+let lastAuto = 0;
+async function trackPdf() {
+  try {
+    const cur = (await import('./study.js')).getCurrent?.(); const pdf = cur?.pdf; if (!pdf?.rec?.id || !pdf.currentPage) return;
+    const n = pdf.currentPage(); if (!n) return;
+    let all = {}; try { all = JSON.parse(localStorage.getItem(VK)) || {}; } catch { }
+    const set = new Set(all[pdf.rec.id] || []); if (!set.has(n)) { set.add(n); all[pdf.rec.id] = [...set]; try { localStorage.setItem(VK, JSON.stringify(all)); } catch { } }
+    if (Date.now() - lastAuto < 60000) return; lastAuto = Date.now();
+    const done = await (await import('./plan.js')).autoComplete(pdf.rec.id, set);
+    if (done.length) { const L = await import('./loona.js'); L.speak(done.length === 1 ? `Unidad completada: ${done[0].title}. Bien, Eve.` : `${done.length} unidades completadas. Vas volando.`); }
+  } catch (e) { console.warn('pdf', e); }
 }

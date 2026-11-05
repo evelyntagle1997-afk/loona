@@ -178,3 +178,10 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - Pestañas de la agenda: Materias · Errores · Plan (se quitaron Agenda y Loona).
 - Repaso espaciado: cada error vuelve a los 14 días; si aciertas, a los 30; si fallas, a los 7; dos aciertos seguidos = dominada. Calendario de repasos de 5 semanas.
 - Cronograma: lee el índice de cada PDF (o el sumario con IA) y reparte los capítulos hasta la fecha límite (30/09/2027 por defecto), con días de descanso. Loona te dice cada día qué toca.
+
+## v105 — Mis libros, cronograma inteligente y modo juego
+- «Plan» → «Importar mis PDF base»: crea la materia y su cuaderno, guarda el PDF y lo pone en el cronograma. Los 11 libros base tienen su índice cargado (`data/indices.json`, reconocidos por número de páginas); los capítulos largos se parten en unidades de ~20 páginas.
+- Cronograma: 2 materias por día intercaladas, ritmo parejo, más peso a Biología/Química/Física/Matemática, sábado liviano, domingo libre, 6 semanas finales solo de repaso y simulados. Si hay dos ediciones del mismo libro, usa la nueva y pausa la anterior.
+- Una unidad se completa sola si lees sus páginas en el PDF.
+- Modo juego: XP, niveles (hasta «Doctora Eve · UNILA»), misiones diarias automáticas, racha, 16 logros y mapa de jefes (un libro = un jefe).
+- En la agenda: el cristal ámbar queda libre; la tarjeta «Nueva materia» se cambió por «Plan de hoy».
