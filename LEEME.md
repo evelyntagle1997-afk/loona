@@ -198,3 +198,8 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 
 ## v108 — Ámbar anguloso
 - Dije nuevo con el cristal ámbar facetado y anguloso (como el original), colgado de la argolla por dentro y del borde por fuera; la zona para tocar el ámbar se movió con él.
+
+## v109 — Loona obedece por voz, con respeto, y libro real
+- «Conversar» usa primero el dictado del celular/PC (gratis): «pon música», «pausa», «siguiente»… funcionan aunque Gemini esté en su límite; al poner música la conversación se cierra sola. La llamada en vivo queda opcional (`localStorage.loonaLive = '1'`).
+- Personalidad estilo Loona Moon (gótica, tranquila, humor seco) pero siempre respetuosa: sin groserías, quejas ni burlas.
+- Al pasar de página en el cuaderno o el PDF gira una hoja de papel vegetal; páginas con grano y bordes de hojas apiladas; láminas de IA pegadas con cinta.

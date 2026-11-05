@@ -64,7 +64,7 @@ export function startReminders() {
       if (!e.is_all_day && t - now <= 10 * 60000 && t - now > -60000 && !warned.has(k)) {
         warned.add(k);
         const L = await import('./loona.js');
-        L.speak(`Eve. En ${Math.max(1, Math.round((t - now) / 60000))} minutos: ${e.title}. No me hagas repetirlo.`);
+        L.speak(`Eve. En ${Math.max(1, Math.round((t - now) / 60000))} minutos: ${e.title}. Ve preparándote.`);
       }
     }
   };

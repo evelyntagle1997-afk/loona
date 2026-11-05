@@ -1,6 +1,6 @@
 // Inicio estilo launcher en cuero: materias como cuadernos, dock inferior.
 import * as db from './db.js';
-export const APP_VERSION = 108;
+export const APP_VERSION = 109;
 import * as sync from './sync.js';
 import { h, icon, iconBtn, COVERS, modal, ask, confirmBox, toast, pickFile, download } from './ui.js';
 import { addFontFiles, DAFONT } from './fonts.js';
@@ -244,11 +244,11 @@ function deco(name, l, t, w, rot, label, fn) {
   return h('button', { class: 'ag-z ag-deco ag-hot ag-' + name, style: { left: l + '%', top: t + '%', width: w + '%', transform: rot }, 'aria-label': label, title: label, 'data-tip': label.split(':').pop().trim(), onclick: e => { e.stopPropagation(); fn(); } },
     h('img', { src: 'img/deco-' + name + '.webp', alt: '', draggable: false, loading: 'lazy' }));
 }
-// reto auténtico del día: Loonie te empuja (con sarcasmo) a mostrarte como eres
-const RETOS = ['Reto de hoy: di una opinión real aunque nadie esté de acuerdo. Sí, en voz alta. No te vas a morir, lo comprobé.', 'Reto: di "no" a algo sin dar tres explicaciones. Un "no, gracias" y ya. Revolucionario, lo sé.', 'Reto: ponte algo que te encante aunque sea "demasiado" para los demás. Demasiado es tu talla.', 'Reto: cuéntale a alguien que vas por Medicina. Sin "bueno, si se puede". Vas. Punto.', 'Reto: hoy no pidas perdón por cosas que no son tu culpa. Cuenta cuántas veces te frenas. Ugh, te va a sorprender.', 'Reto: pon tu música favorita donde otros la escuchen. Que sufran un poquito de buen gusto.'];
+// reto auténtico del día: Loonie te empuja (con cariño) a mostrarte como eres
+const RETOS = ['Reto de hoy: di una opinión real aunque nadie esté de acuerdo. Sí, en voz alta. Tú puedes, yo te acompaño.', 'Reto: di "no" a algo sin dar tres explicaciones. Un "no, gracias" y ya.', 'Reto: ponte algo que te encante aunque sea "demasiado" para los demás. Demasiado es tu talla.', 'Reto: cuéntale a alguien que vas por Medicina. Sin "bueno, si se puede". Vas. Punto.', 'Reto: hoy no pidas perdón por cosas que no son tu culpa. Cuenta cuántas veces te frenas.', 'Reto: pon tu música favorita donde otros la escuchen. Tu gusto merece sonar.'];
 async function autentica() {
   const L = await import('./loona.js'); const s = await db.settings();
-  if (s.geminiKey) { try { const t = await L.aiText(s, 'Dame mi reto auténtico de hoy: uno pequeño y concreto para mostrarme como soy, con tu sarcasmo cariñoso, en 2 o 3 frases.', { system: 'Eres Loona (Loonie), la amiga gótica, sarcástica y leal de Eve. Le enseñas a ser auténtica con ironía, sin frases cursis. Español latino, sin emojis.' }); if (t) return L.speak(t); } catch { } }
+  if (s.geminiKey) { try { const t = await L.aiText(s, 'Dame mi reto auténtico de hoy: uno pequeño y concreto para mostrarme como soy, con tu humor seco y cariñoso, en 2 o 3 frases.', { system: 'Eres Loona (Loonie), la amiga gótica, tranquila y leal de Eve (estilo Loona Moon pero siempre respetuosa). Le enseñas a ser auténtica con calidez y humor seco amable, sin burlas ni frases cursis. Español latino, sin emojis.' }); if (t) return L.speak(t); } catch { } }
   L.speak(RETOS[Math.floor(Math.random() * RETOS.length)]);
 }
 const QUOTES = ['Un capítulo a la vez, Eve. Nadie aprende Medicina en un día.', 'La que estudia cansada también cuenta. Pero duerme, eh.', 'Hoy difícil, mañana UNILA. XOXO.', 'Tú contra el ENEM. Yo apuesto por ti. No se lo digas a nadie.', 'Si fuera fácil, cualquiera sería médica.'];

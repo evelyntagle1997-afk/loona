@@ -56,6 +56,7 @@ export class PdfView {
     this.pagesEl = h('div', { class: 'pdf-pages' });
     this.scroller.append(this.pagesEl);
     this.root.append(this.scroller);
+    import('./pageturn.js').then(m => m.attachPageTurn(this.scroller, '.pdf-page')).catch(() => { });   // hoja que gira al pasar de página
     this.buildDial();
     this.buildSelBar();
     this.scroller.addEventListener('wheel', e => {

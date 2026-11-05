@@ -3,6 +3,7 @@
 // disponible para tu clave, la app usa la conversación normal.
 import * as db from './db.js';
 import { toast } from './ui.js';
+import { localCommand } from './cmds.js';
 import { PERSONA, nowCtx, doAction, memCtx, rememberTurn, visual, refreshAgendaCtx } from './loona.js';
 
 const MODELS = ['gemini-3.8-live', 'gemini-3.1-flash-live-preview', 'gemini-2.5-flash-native-audio-preview-12-2025'];
@@ -108,6 +109,7 @@ export async function startLive({ firstText = '', onEnd } = {}) {
       if (sc.inputTranscription?.text) { heard += sc.inputTranscription.text; emit({ heard }); bump(); }
       if (sc.outputTranscription?.text) { said += sc.outputTranscription.text; emit({ said }); }
       for (const p of sc.modelTurn?.parts || []) if (p.inlineData?.data) { play(p.inlineData.data); bump(); }
+      if (sc.inputTranscription?.text && !S?.lc) { const c = localCommand(heard); if (c?.act) { S.lc = 1; doAction(c.act); setTimeout(() => { if (S) S.lc = 0; }, 4000); } }   // «pon música» se hace aunque el modelo no use la herramienta
       if (sc.turnComplete) { if (heard.trim() || said.trim()) rememberTurn(heard.trim(), said.trim()); said = ''; heard = ''; }
     }
     if (m.toolCall?.functionCalls) {

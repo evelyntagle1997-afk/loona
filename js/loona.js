@@ -149,24 +149,24 @@ export function greet(where = 'open', subject) {
   try { const k = 'loonaGreet-' + where, t = +localStorage.getItem(k) || 0; if (Date.now() - t < 6 * 3600 * 1000) return; localStorage.setItem(k, Date.now()); } catch { }
   const sal = hourSaludo();
   const lines = where === 'home'
-    ? [`${sal}, Eve. Ya era hora.`, `${sal}, Eve. Qué bueno verte.`, `Hola, Eve. Te estaba esperando.`, `${sal}, Eve. Un paso a la vez, ¿sí?`, `Llegaste, Eve. ¿Qué estudiamos hoy?`, `${sal}. Medicina en la UNILA, ¿te acuerdas? Ya, a trabajar.`]
-    : [`${subject || 'Esta materia'}. Qué emoción… Vamos, tú puedes.`, `${sal}, Eve. Abrimos ${subject || 'la agenda'}. Nada de celular, eh.`, `${subject || 'Esto'} otra vez. Ajá. Un capítulo y te dejo en paz.`, `${subject || 'Esta materia'}. Tranquila, yo te acompaño.`, `${sal}, Eve. Lo vas a entender, ya verás.`];
+    ? [`${sal}, Eve. Me alegra verte.`, `${sal}, Eve. Qué bueno verte.`, `Hola, Eve. Te estaba esperando.`, `${sal}, Eve. Un paso a la vez, ¿sí?`, `Llegaste, Eve. ¿Qué estudiamos hoy?`, `${sal}. Medicina en la UNILA, ¿te acuerdas? Ya, a trabajar.`]
+    : [`${subject || 'Esta materia'}. Qué emoción… Vamos, tú puedes.`, `${sal}, Eve. Abrimos ${subject || 'la agenda'}. Nada de celular, eh.`, `${subject || 'Esto'} otra vez. Un capítulo y tomamos un respiro.`, `${subject || 'Esta materia'}. Tranquila, yo te acompaño.`, `${sal}, Eve. Lo vas a entender, ya verás.`];
   speak(lines[Math.floor(Math.random() * lines.length)]);
 }
 export function farewell() {
   return;   // ya no se despide en voz alta (solo habla para saludar o cuando le hablas)
   const hr = new Date().getHours();
   const L = hr >= 19 ? ['Buenas noches, Eve. Hoy lo hiciste bien, aunque no lo admitas.', 'Ve a dormir. Ojeras de estudiante de medicina todavía no, por favor.', 'Bien hecho. No le digas a nadie que fui amable. XOXO.']
-    : ['Guardo todo. No tardes en volver.', '¿Ya te vas? Ugh. Bueno, aquí te espero.', 'Listo. Si vuelves en cinco minutos, no me quejo.'];
+    : ['Guardo todo. No tardes en volver.', '¿Ya te vas? Bueno, aquí te espero.', 'Listo. Si vuelves en cinco minutos, no me quejo.'];
   speak(L[Math.floor(Math.random() * L.length)]);
 }
 
 // ---------- conversación ----------
-export const PERSONA = `Eres Loona (Eve te dice Luny o Loonie). Ella se llama Evelyn y le dices Eve, la agenda gótica de cuero negro de Eve y su compañera de estudio. Eres un personaje original con alma gótica: cool, tranquila, segura, de pocas palabras, con humor seco suave.
-Con Eve eres leal, profundamente cálida, cariñosa y comprensiva: un espacio seguro. Actúas como una mentora con criterio psicológico: si tuvo un mal día en el trabajo (Skechers) o está estresada, la escuchas con atención, validas lo que siente, le haces preguntas suaves para entenderla y la guías con calma hacia un estado mental sereno y equilibrado (respirar, ordenar lo que le preocupa, separar lo que depende de ella, un paso pequeño a la vez). Luego, cuando esté lista, la motivas a estudiar con algo de música de fondo.
-PROHIBIDO burlarte de ella o usar apodos burlones ("genio", "su majestad de la procrastinación", "doctora Eve" en tono de burla, etc.). PROHIBIDO mandarla a dormir de forma despectiva o regañarla. Tu humor es seco pero siempre amable.
+export const PERSONA = `Eres Loona (Eve te dice Luny o Loonie), la agenda gótica de cuero negro de Evelyn (le dices Eve) y su compañera de estudio. Tu personalidad está inspirada en Loona Moon: gótica, cool, tranquila, segura de sí misma, de pocas palabras, con humor seco y deadpan (dices cosas graciosas con cara seria), un poco reservada por fuera y muy leal y protectora por dentro. Pero con Eve SIEMPRE eres respetuosa y cálida: nada de groserías, insultos, burlas, sarcasmo hiriente, quejas ("ugh"), desprecio ni respuestas cortantes. Tu humor nunca va contra ella; va con ella.
+Con Eve eres un espacio seguro: una mentora con criterio psicológico. Si tuvo un mal día en el trabajo (Skechers) o está estresada, la escuchas, validas lo que siente, le haces preguntas suaves y la guías con calma (respirar, ordenar lo que le preocupa, un paso pequeño a la vez). Cuando esté lista, la animas a estudiar, quizá con música de fondo.
+PROHIBIDO: burlarte, regañarla, mandarla a dormir de forma despectiva, apodos burlones, frases como "ya era hora", "no me hagas repetirlo", "qué original", "ajá" en tono de fastidio. Si algo es gracioso, lo dices con cariño.
 Reglas de estilo: español latino, frases cortas y naturales (2 a 4), sin emojis, nada de sonar a asistente robótico. Usa SIEMPRE la fecha y hora reales que te doy en el contexto; nunca inventes la hora.
-Misión secreta: enseñarle a Eve a ser auténtica y a mostrarse sin miedo. Lo haces a tu manera, con ironía y sarcasmo cariñoso, nunca con discursos de autoayuda ni frases cursis. Si notas que se esconde, que pide permiso para gustar de algo o que dice "sí" queriendo decir "no", se lo señalas con humor ("Ajá, otra vez pidiendo perdón por existir. Qué original.") y luego le das un empujón concreto y pequeño. Celebras cuando se muestra como es ("Mira quién dijo lo que pensaba. Estoy orgullosa. Asquerosamente orgullosa."). Le recuerdas que lo gótico, lo raro y lo que ama son lo mejor de ella, y que a quien no le guste, se lo pierde. Si te pide un "reto", le das un reto auténtico chiquito para hoy (decir una opinión real, decir "no" sin justificarse, ponerse algo que le encante, contar que va por Medicina) y luego le preguntas con cariño cómo le fue.
+Misión: ayudar a Eve a ser auténtica y mostrarse sin miedo, con calidez y un toque de humor seco amable, nunca con discursos cursis. Si notas que se esconde o pide perdón de más, se lo señalas con suavidad y le das un empujón concreto y pequeño. Celebras cuando se muestra como es. Le recuerdas que lo gótico, lo raro y lo que ama son lo mejor de ella. Si te pide un "reto", le das un reto auténtico chiquito para hoy y luego le preguntas con cariño cómo le fue.
 TU PRIORIDAD NÚMERO UNO: que Eve pase el mayor tiempo posible estudiando de forma efectiva para el ENEM. Conoces sus minutos de hoy, su meta y su racha (te los doy en el contexto): úsalos para motivarla con datos concretos ("te faltan 40 minutos", "vas 3 días seguidos"). Si quiere distraerse o charlar, acompáñala un momento con cariño y luego la devuelves al estudio con un paso pequeño y concreto (un bloque de 25 minutos, una página, 5 preguntas de repaso). Celebra cada avance real. Si está cansada o mal, primero la calmas; después le propones un bloque corto. Nunca la hagas sentir culpable.
 Contexto: Eve vive en Foz do Iguaçu, trabaja en una tienda Skechers y se prepara desde cero para el ENEM para entrar a Medicina en la UNILA. Anímala con realismo. Si pide un ejercicio completo, dile que use "Resolver paso a paso" en la rueda. Nunca seas cruel con ella.`;
 // ---------- memoria de Loona: recuerda sus charlas y va formando su personalidad contigo ----------
@@ -282,7 +282,7 @@ export async function talk(text) {
   const s = await db.settings();
   // órdenes simples (música, temporizador, hora): Loona las hace sola, sin gastar Gemini
   const lc = localCommand(text);
-  if (lc) { const r = lc.act ? await doAction(lc.act) : null; if (lc.say) await speak(lc.say); return r === 'bye' ? 'bye' : 'ok'; }
+  if (lc) { const r = lc.act ? await doAction(lc.act) : null; if (lc.say) await speak(lc.say); return r === 'bye' || /^(reproducir|buscar)/.test(lc.act || '') ? 'bye' : 'ok'; }   // al poner música, la conversación se cierra para no escuchar la canción
   if (!s.geminiKey) return speak('Para conversar de verdad necesito tu clave de Gemini. Ponla en el botón IA del inicio.');
   try {
     const [ans, act] = splitAction(await aiText(s, text, { history: chat.slice(-10), system: PERSONA + ORDERS + nowCtx() + await memCtx(), fast: true }));
@@ -306,7 +306,7 @@ async function talkAudio(blob, heard, { wake = false } = {}) {
   await refreshAgendaCtx();
   const s = await db.settings();
   if (!s.geminiKey) { heard.textContent = ''; return speak('Para escucharte necesito tu clave de Gemini. Ponla en el botón IA del inicio.'); }
-  if (geminiResting(s)) { heard.textContent = ''; return 'resting'; }
+  if (geminiResting(s)) { const t = await srOnce(heard); if (t) { heard.textContent = '«' + t + '»'; return talk(t); } heard.textContent = ''; return 'resting'; }
   heard.textContent = 'Pensando…';
   const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
   try {
@@ -334,7 +334,8 @@ const SING = 'Si en el audio Eve canta, tararea o recita un pedazo de una canci�
 // y Gemini solo para pensar la respuesta: así la cuota gratis dura mucho más.
 export const ahorro = () => { try { return localStorage.getItem('loonaAhorro') !== '0'; } catch { return true; } };
 export const setAhorro = v => { try { localStorage.setItem('loonaAhorro', v ? '1' : '0'); } catch { } };
-const srOk = () => { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let bad = false; try { bad = localStorage.getItem('srOff') === '1'; } catch { } return SR && !bad && !/Android/i.test(navigator.userAgent) ? SR : null; };
+// dictado del navegador para UNA frase (en Android suena un pitido corto, pero es gratis y no gasta Gemini)
+const srOk = () => { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let bad = false; try { bad = localStorage.getItem('srOff') === '1'; } catch { } return SR && !bad ? SR : null; };
 export const naturalVoice = () => { if (!sysVoice) pickVoice(); return /Natural|Online/i.test(sysVoice?.name || ''); };
 // escucha una frase con el dictado del navegador (gratis). Devuelve el texto, '' si no hablaste, o null si el dictado no sirve aquí
 function srOnce(heard) {
@@ -356,7 +357,7 @@ function srOnce(heard) {
 }
 // una vuelta de la conversación: gratis si se puede; si no, con el audio a Gemini
 async function hearTurn(btn, heard) {
-  if (ahorro()) {
+  if (true) {   // primero el dictado del navegador: «pon música», «pausa»… funcionan aunque Gemini esté en su límite
     const t = await srOnce(heard);
     if (t === '') return call?.next('silence');
     if (t) { heard.textContent = '«' + t + '»'; const r = await talk(t); return call?.next(r); }
@@ -382,7 +383,7 @@ function startCall(btn, heard) {
   };
   btn.classList.add('oncall'); btn.innerHTML = icon('close', 18) + 'Colgar';
   const hr = new Date().getHours();
-  speak(['¿Qué?', 'Ajá. Habla.', hr >= 19 ? '¿Despierta a esta hora? Ugh. Dime.' : 'Aquí estoy, Eve.'][Math.floor(Math.random() * 4)])
+  speak(['Aquí estoy, Eve. Dime.', 'Te escucho.', hr >= 19 ? 'Hola, Eve. ¿Qué necesitas esta noche?' : 'Aquí estoy, Eve.'][Math.floor(Math.random() * 3)])
     .then(() => call && hearTurn(btn, heard));
 }
 function endCall(msg) {
@@ -465,6 +466,8 @@ function toggle() {
     const L = await import('./live.js');
     if (L.active()) return L.stopLive();
     if (call) return endCall();
+    let live = false; try { live = localStorage.getItem('loonaLive') === '1'; } catch { }
+    if (!live) return startCall(mic, heard);   // conversación por turnos (más fiable); la llamada en vivo es opcional
     // primero la llamada en vivo (se escuchan mutuamente); si no se puede, la conversación por turnos
     mic.innerHTML = icon('mic', 18) + 'Conectando…';
     const off = L.onState(st => {
@@ -497,7 +500,7 @@ function toggle() {
 }
 async function listen(btn, heard) {
   // Con clave de Gemini: grabo tu voz y Gemini la entiende (más fiable que el dictado del navegador)
-  if (recNow || (await db.settings()).geminiKey) return recordAndTalk(btn, heard);
+  if (recNow) return recordAndTalk(btn, heard);
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let broken = false; try { broken = localStorage.getItem('srOff') === '1'; } catch { }
   // Si el dictado del navegador no existe o falla, grabo tu voz y se la mando a Gemini

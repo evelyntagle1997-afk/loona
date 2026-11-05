@@ -49,7 +49,7 @@ async function heard(text) {
   const t = text.trim(); if (!t) return;
   const m = t.match(WAKE);
   if (!m && Date.now() > follow) return;
-  const cmd = (m ? t.slice(m.index + m[0].length).trim() : t) || '(Eve te llamó por tu nombre. Contesta corto y seco.)';
+  const cmd = (m ? t.slice(m.index + m[0].length).trim() : t) || '(Eve te llamó por tu nombre. Contesta corto y amable.)';
   if (!cmd && Date.now() > follow) { follow = Date.now() + 8000; }
   follow = 0;
   // órdenes simples (pon tal canción, pausa, siguiente, temporizador): sin llamada ni Gemini
@@ -58,6 +58,8 @@ async function heard(text) {
   const st = await db.settings();
   if (geminiResting(st)) { await talk(cmd); follow = Date.now() + 8000; return; }
   // con la llamada en vivo se conversa fluido; al colgar, Loona vuelve a esperar su nombre
+  let live = false; try { live = localStorage.getItem('loonaLive') === '1'; } catch { }
+  if (!live) { await talk(cmd); follow = Date.now() + 8000; return; }   // sin llamada en vivo: responde por turnos
   const L = await import('./live.js');
   const eng = engine; engine?.stop(); engine = null;
   const back = () => { if (on && !engine) { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let off = false; try { off = localStorage.getItem('hfEngine') === 'gemini'; } catch { } if (SR && !off && !/Android/i.test(navigator.userAgent)) startSR(SR); else startVAD(); } };

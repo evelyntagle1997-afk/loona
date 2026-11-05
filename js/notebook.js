@@ -136,6 +136,7 @@ export class Notebook {
     this.root.append(this.head, h('div', { class: 'nb-main' }, this.rail, h('div', { class: 'nb-stage' }, this.opts, this.scroller)));
     this.ro = new ResizeObserver(() => this.relayout()); this.ro.observe(this.scroller);
     this.scroller.addEventListener('scroll', () => this.updatePageNum());
+    import('./pageturn.js').then(m => m.attachPageTurn(this.scroller, '.nb-page')).catch(() => { });   // hoja que gira al pasar de página
     this.scroller.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); if (this.locked) return; this.setZoom(this.zoom * (e.deltaY < 0 ? 1.08 : .93)); }, { passive: false });
     document.addEventListener('keydown', this.onKey = e => {
       if (!this.root.isConnected || e.target.closest('[contenteditable=true],input,textarea')) return;
