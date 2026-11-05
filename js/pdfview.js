@@ -2,7 +2,7 @@
 // y el círculo de herramientas.
 import * as pdfjsLib from '../vendor/pdf.min.mjs';
 import * as db from './db.js';
-import { h, icon, LEVELS, levelOf, toast, makeDraggable, clamp, kineticPan } from './ui.js';
+import { h, icon, LEVELS, levelOf, toast, makeDraggable, clamp, kineticPan, HL_COLORS, colorRow } from './ui.js';
 import { aiOcr, tesseractOcr } from './summarizer.js';
 
 // color un poco más oscuro (el lápiz marca más intenso)
@@ -35,8 +35,10 @@ export class PdfView {
     const saved = JSON.parse(localStorage.getItem('pdfTool') || '{}');
     this.tool = saved.tool || 'marker';
     this.level = saved.level || 2;
+    // cada herramienta recuerda su propio color (resaltador amarillo, línea roja, raya azul, lápiz café…)
+    this.colors = { marker: '#F4C430', underline: '#D2573C', thin: '#5B8DD9', pen: '#6B3E26', ...(saved.colors || {}) };
     this.width = saved.width || 1;      // grosor relativo
-    this.alpha = saved.alpha ?? .75;    // intensidad del color (0.15 a 1)
+    this.alpha = saved.alpha ?? .85;    // intensidad del color (0.15 a 1)
     this.eraserW = saved.eraserW ?? 10; // grosor del borrador
     this.straight = saved.straight ?? true;
     // por defecto: un dedo mueve la página y el lápiz subraya
@@ -48,7 +50,7 @@ export class PdfView {
     this.build();
   }
   saveTool() {
-    localStorage.setItem('pdfTool', JSON.stringify({ tool: this.tool, level: this.level, width: this.width, alpha: this.alpha, eraserW: this.eraserW, straight: this.straight, penOnly: this.penOnly, fingerMoves: this.penOnly, autoSum: this.autoSum }));
+    localStorage.setItem('pdfTool', JSON.stringify({ tool: this.tool, colors: this.colors, level: this.level, width: this.width, alpha: this.alpha, eraserW: this.eraserW, straight: this.straight, penOnly: this.penOnly, fingerMoves: this.penOnly, autoSum: this.autoSum }));
   }
 
   build() {
@@ -469,11 +471,11 @@ export class PdfView {
       if (this.tool === 'eraser') { const q = toPt(e); this.eraseAt(p, q); this.eraserRing(p, q); pts = []; return; }
       pts = [toPt(e)];
       preview = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      const lv = levelOf(this.level);
+      const col = this.curColor();
       const w = this.strokeW(p);
       preview.setAttribute('fill', 'none');
-      preview.setAttribute('stroke', this.tool === 'pen' ? darker(lv.color) : lv.color);
-      preview.setAttribute('stroke-opacity', this.tool === 'marker' ? .55 * this.alpha : this.alpha);
+      preview.setAttribute('stroke', col);
+      preview.setAttribute('stroke-opacity', this.tool === 'marker' ? Math.min(.85, .7 * this.alpha) : this.alpha);
       preview.setAttribute('stroke-width', this.tool === 'marker' ? w * 2.6 : this.tool === 'thin' ? Math.max(.6, w) : w);
       preview.setAttribute('stroke-linecap', this.tool === 'marker' ? 'butt' : 'round');
       preview.setAttribute('stroke-linejoin', 'round');
@@ -503,6 +505,8 @@ export class PdfView {
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
   }
+  curColor(t = this.tool) { return this.colors[t] || this.colors.marker || levelOf(this.level).color; }
+  setColor(c, t = this.tool) { if (!['marker', 'underline', 'thin', 'pen'].includes(t)) t = 'marker'; this.colors[t] = c; this.applyTool(); }
   strokeW(p) { const fh = p.lines?.length ? median(p.lines.map(l => l.fh)) : 11; return fh * (this.tool === 'pen' ? .2 : this.tool === 'thin' ? .06 : .42) * this.width; }
 
   async finishStroke(p, pts) {
@@ -565,10 +569,11 @@ export class PdfView {
     return out;
   }
 
-  async addHl(p, partial, { level = this.level, notify = true } = {}) {
+  async addHl(p, partial, { level = this.level, notify = true, color } = {}) {
+    const st = partial.style === 'free' ? 'pen' : partial.style === 'band' ? 'marker' : partial.style;
     const hl = {
       id: db.uid('hl_'), kind: 'hl', pdf: this.rec.id, subject: this.rec.subject, page: p.n, level,
-      notebook: this.notebookId, created: Date.now(), w: this.width, alpha: this.alpha, ...partial,
+      notebook: this.notebookId, created: Date.now(), w: this.width, alpha: this.alpha, color: color || this.curColor(st), ...partial,
     };
     hl.y = hl.rects ? hl.rects[0][1] : Math.min(...hl.pts.map(q => q[1]));
     hl.y1 = hl.rects ? Math.max(...hl.rects.map(r => r[1] + r[3])) : Math.max(...hl.pts.map(q => q[1]));
@@ -623,7 +628,7 @@ export class PdfView {
     const NS = 'http://www.w3.org/2000/svg';
     for (const hl of this.hls.values()) {
       if (hl.page !== p.n) continue;
-      const lv = levelOf(hl.level);
+      const lv0 = levelOf(hl.level), lv = hl.color ? { color: hl.color, soft: hl.color } : lv0;
       const g = document.createElementNS(NS, 'g');
       g.dataset.id = hl.id;
       if (hl.rects) for (const [x, y, w, hh] of hl.rects) {
@@ -637,7 +642,7 @@ export class PdfView {
           const r = document.createElementNS(NS, 'rect');
           r.setAttribute('x', x - 1); r.setAttribute('y', y + hh * .04); r.setAttribute('width', w + 2); r.setAttribute('height', hh * .96);
           r.setAttribute('rx', hh * .18); r.setAttribute('class', 'mk');
-          if (hl.alpha != null) { r.setAttribute('fill', lv.color); r.setAttribute('fill-opacity', .55 * hl.alpha); } else r.setAttribute('fill', lv.soft);
+          if (hl.alpha != null) { r.setAttribute('fill', lv.color); r.setAttribute('fill-opacity', Math.min(.85, .7 * hl.alpha)); } else r.setAttribute('fill', lv.soft);
           if (hl.w != null && hl.w !== 1) { const k = clamp(hl.w, .4, 2.2), nh = hh * .96 * Math.min(1.25, .55 + .45 * k); r.setAttribute('y', y + hh * .52 - nh / 2); r.setAttribute('height', nh); }
           g.append(r);
         }
@@ -646,7 +651,7 @@ export class PdfView {
         const path = document.createElementNS(NS, 'path');
         path.setAttribute('d', 'M' + hl.pts.map(q => q[0] + ' ' + q[1]).join('L'));
         path.setAttribute('fill', 'none');
-        if (hl.alpha != null) { path.setAttribute('stroke', hl.style === 'free' ? darker(lv.color) : lv.color); path.setAttribute('stroke-opacity', hl.style === 'band' ? .55 * hl.alpha : hl.alpha); }
+        if (hl.alpha != null) { path.setAttribute('stroke', hl.style === 'free' && !hl.color ? darker(lv.color) : lv.color); path.setAttribute('stroke-opacity', hl.style === 'band' ? .55 * hl.alpha : hl.alpha); }
         else path.setAttribute('stroke', hl.style === 'band' ? lv.soft : lv.color);
         path.setAttribute('stroke-width', hl.width);
         path.setAttribute('stroke-linecap', hl.style === 'band' ? 'butt' : 'round');
@@ -660,8 +665,8 @@ export class PdfView {
   // ---------- selección de texto ----------
   buildSelBar() {
     this.selBar = h('div', { class: 'selbar leather-chip', hidden: true },
-      ...LEVELS.map(l => h('button', { class: 'lvl-dot', style: { '--c': l.color }, title: 'Subrayar como: ' + l.name, onclick: () => this.highlightSelection(l.n) })),
-      h('span', { class: 'selbar-txt' }, 'Subrayar'));
+      ...HL_COLORS.slice(0, 8).map(c => h('button', { class: 'lvl-dot', style: { '--c': c }, title: 'Resaltar de este color', onclick: () => { this.colors.marker = c; this.saveTool(); this.highlightSelection(this.level, c); } })),
+      h('span', { class: 'selbar-txt' }, 'Resaltar'));
     this.root.append(this.selBar);
   }
   updateSelBar() {
@@ -674,7 +679,7 @@ export class PdfView {
     this.selBar.style.left = clamp(r.left - box.left + r.width / 2 - 110, 6, box.width - 230) + 'px';
     this.selBar.style.top = Math.max(6, r.top - box.top - 52) + 'px';
   }
-  async highlightSelection(level) {
+  async highlightSelection(level, color) {
     const s = document.getSelection();
     if (!s || s.isCollapsed) return;
     const range = s.getRangeAt(0);
@@ -693,7 +698,7 @@ export class PdfView {
     this.selBar.hidden = true;
     let first = true;
     for (const [p, list] of byPage) {
-      await this.addHl(p, { style: 'marker', rects: mergeRects(list), text: first ? text : '' }, { level });
+      await this.addHl(p, { style: 'marker', rects: mergeRects(list), text: first ? text : '' }, { level, color: color || this.colors.marker });
       first = false;
     }
   }
@@ -708,8 +713,11 @@ export class PdfView {
       ring.append(b);
     });
     const panel = h('div', { class: 'dial-panel leather-panel', 'data-nodrag': '' },
-      h('div', { class: 'dp-title' }, 'Color según importancia'),
-      h('div', { class: 'dp-levels' }, ...LEVELS.map(l => h('button', { class: 'lvl', 'data-l': l.n, style: { '--c': l.color }, onclick: () => { this.level = l.n; this.applyTool(); } }, h('i'), l.short))),
+      h('div', { class: 'dp-title' }, 'Color de esta herramienta'),
+      this.colorBox = h('div', { class: 'dp-colors' }),
+      h('label', { class: 'dp-row' }, 'Intensidad', h('input', { type: 'range', min: '0.15', max: '1', step: '0.05', value: this.alpha, oninput: e => { this.alpha = +e.target.value; this.saveTool(); } })),
+      h('div', { class: 'dp-title' }, 'Importancia (para el resumen)'),
+      h('div', { class: 'dp-levels' }, ...LEVELS.map(l => h('button', { class: 'lvl', 'data-l': l.n, onclick: () => { this.level = l.n; this.applyTool(); } }, l.short))),
       h('label', { class: 'dp-row' }, 'Grosor', this.wIn = h('input', { type: 'range', min: '0.5', max: '2', step: '0.1', value: this.width, oninput: e => { this.width = +e.target.value; this.saveTool(); } })),
       this.tg('straight', 'Enderezar trazos', 'Los subrayados se ajustan solos al renglón'),
       this.tg('penOnly', 'Solo lápiz dibuja', 'El dedo desplaza la página y el lápiz subraya'),
@@ -760,10 +768,10 @@ export class PdfView {
   }
   applyTool() {
     this.saveTool();
-    const lv = levelOf(this.level);
     this.root.dataset.tool = this.tool;
     this.root.classList.toggle('pen-only', this.penOnly);
-    this.core.style.setProperty('--c', lv.color);
+    this.core.style.setProperty('--c', this.curColor());
+    if (this.colorBox) { const t = ['marker', 'underline', 'thin', 'pen'].includes(this.tool) ? this.tool : 'marker'; this.colorBox.replaceChildren(colorRow(HL_COLORS, this.colors[t], c => this.setColor(c, t))); }
     this.core.querySelector('.core-ic').innerHTML = icon(TOOLS.find(t => t.k === this.tool).icon, 24);
     this.dial.querySelectorAll('.dial-item').forEach(b => b.classList.toggle('on', b.dataset.tool === this.tool));
     this.panel.querySelectorAll('.lvl').forEach(b => b.classList.toggle('on', +b.dataset.l === this.level));
@@ -782,7 +790,7 @@ export class PdfView {
       const { width: W, height: H } = pg.getSize();
       const box = pg.getCropBox ? pg.getCropBox() : { x: 0, y: 0 };
       const sx = W / this.pages[hl.page - 1].w, sy = H / this.pages[hl.page - 1].h;
-      const c = hex(levelOf(hl.level).color);
+      const c = hex(hl.color || levelOf(hl.level).color);
       if (hl.rects) for (const [x, y, w, hh] of hl.rects) {
         if (hl.style === 'underline' || hl.style === 'thin') pg.drawLine({ start: { x: box.x + x * sx, y: box.y + H - (y + hh) * sy }, end: { x: box.x + (x + w) * sx, y: box.y + H - (y + hh) * sy }, thickness: hl.style === 'thin' ? .5 : 1.2, color: c });
         else pg.drawRectangle({ x: box.x + x * sx, y: box.y + H - (y + hh) * sy, width: w * sx, height: hh * sy, color: c, opacity: hl.alpha != null ? .55 * hl.alpha : .35 });

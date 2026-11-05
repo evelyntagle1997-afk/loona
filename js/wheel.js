@@ -1,7 +1,7 @@
 // La rueda: reemplaza todas las barras de la vista de estudio.
 // Queda medio escondida en un borde; se gira con el dedo para ver el resto,
 // y cada herramienta abre círculos pequeños con sus opciones.
-import { h, icon, LEVELS, levelOf, INKS, toast, clamp } from './ui.js';
+import { h, icon, LEVELS, levelOf, INKS, toast, clamp, HL_COLORS, myColors, pickColor } from './ui.js';
 import { TAPE_PATTERNS, TAPE_COLORS, tapeStyle } from './tapes.js';
 import { STYLES } from './fonts.js';
 import { openMiniKb, toggleMiniKb, miniKbOpen, sysKeyboard, setSysKeyboard, applyKbMode } from './minikb.js';
@@ -10,7 +10,7 @@ import { AMBIENTS, play as ambPlay, stop as ambStop, playing as ambPlaying, setV
 const R = 128;          // radio del anillo de herramientas
 const RS = R + 64;      // radio del anillo de opciones
 const D = 2 * (R + 34); // diámetro del disco
-const PEN_COLORS = ['#F4F1EE', '#D9D5D7', '#B2ADB0', '#8A8588', '#2A2729', '#0D0C0D', '#C77A3A', '#E6B98A', '#BFC6C9', '#FFFFFF'];
+const PEN_COLORS = ['#2B1A1E', '#6B3E26', '#F1E6D6', '#F4C430', '#E39B4F', '#F2A07B', '#F28FA8', '#D2573C', '#A33B4A', '#8DBF7A', '#4FB3A9', '#5B8DD9', '#A88BD8', '#0D0C0D'];
 const PEN_SIZES = { pen: [1.5, 3, 5], brush: [5, 9, 16], marker: [12, 18, 28], pencil: [1.5, 2.5, 4], glitter: [10, 16, 26], write: [1.8, 2.6, 4] };
 
 export class Wheel {
@@ -36,11 +36,14 @@ export class Wheel {
     // Rueda ordenada y liviana: pocos botones grandes; lo demás va dentro, agrupado por tema.
     //   PDF: Marcar · Borrar · Mover/leer · Página · Candado | Deshacer · Intercambiar · Vista
     //   Cuaderno: Seleccionar · Escribir · Marcadores · Borrador · Texto · Decorar | Deshacer · Rehacer · Hoja · Intercambiar · Vista
-    const colorGroup = (cur, list, set, name = 'Colores') => ({ color: cur, name, group: 1, sub: () => list.map(c => ({ color: c, name: 'Color', on: cur === c, run: () => set(c), keep: 1 })) });
+    // colores + los tuyos + «Otro color» (cualquiera)
+    const colorGroup = (cur, list, set, name = 'Colores') => ({ color: cur, name, group: 1, sub: () => [...[...new Set([...list, ...myColors()])].map(c => ({ color: c, name: 'Color', on: cur === c, run: () => set(c), keep: 1 })), { icon: 'plus', name: 'Otro color (cualquiera)', run: async () => { const c = await pickColor(cur); if (c) set(c); } }] });
     if (pv) {
       const pdfTool = (k, ic, name, sub) => ({ k: 'pdf-' + k, icon: ic, name, sub, active: () => pv.tool === k, run: () => { pv.tool = k; pv.applyTool(); this.lastPane = 'pdf'; } });
       const pdfSub = () => [
-        ...LEVELS.map(l => ({ color: l.color, label: String(l.n), name: l.name, on: pv.level === l.n, run: () => { pv.level = l.n; pv.applyTool(); } })),
+        ...[...new Set([...HL_COLORS.slice(0, 8), ...myColors()])].map(c => ({ color: c, name: 'Color', on: (pv.curColor() || '').toLowerCase() === c.toLowerCase(), run: () => pv.setColor(c), keep: 1 })),
+        { icon: 'plus', name: 'Otro color (cualquiera)', run: async () => { const c = await pickColor(pv.curColor()); if (c) pv.setColor(c); } },
+        { icon: 'layers', name: 'Importancia para el resumen', group: 1, sub: () => LEVELS.map(l => ({ icon: 'bookmark', label: String(l.n), name: l.name, on: pv.level === l.n, run: () => { pv.level = l.n; pv.applyTool(); }, keep: 1 })) },
         ...[[.6, 'Fino'], [1, 'Medio'], [1.6, 'Grueso']].map(([w, n], i) => ({ size: 6 + i * 5, name: 'Grosor ' + n, on: Math.abs(pv.width - w) < .05, run: () => { pv.width = w; pv.saveTool(); } })),
         { icon: 'sliders', name: 'Ajustes: grosor, intensidad y opciones', group: 1, sub: () => [
           { icon: 'sliders', name: 'Grosor e intensidad a tu gusto', run: () => this.slidersCard('Grosor e intensidad', [
@@ -55,7 +58,7 @@ export class Wheel {
         pdfTool('thin', 'thin', 'Raya finita', pdfSub), pdfTool('pen', 'pen', 'Lápiz libre', pdfSub),
       ];
       out.push(
-        this.family('pdf-marcar', 'Marcar el PDF (resaltar, subrayar, raya finita, lápiz)', 'marcar', 'pdf', marcar, () => levelOf(pv.level).color),
+        this.family('pdf-marcar', 'Marcar el PDF (resaltar, subrayar, raya finita, lápiz)', 'marcar', 'pdf', marcar, () => pv.curColor()),
         { k: 'pdf-eraser', cat: 'marcar', group: 'pdf', tool: true, icon: 'eraser', name: 'Borrar subrayado', active: () => pv.tool === 'eraser', run: () => { pv.tool = 'eraser'; pv.applyTool(); this.lastPane = 'pdf'; }, sub: () => [
           ...[[6, 'fino'], [14, 'mediano'], [30, 'grueso']].map(([w, n], i) => ({ size: 6 + i * 5, name: 'Borrador ' + n, on: pv.eraserW === w, run: () => { pv.eraserW = w; pv.saveTool(); } })),
           { icon: 'sliders', name: 'Grosor del borrador a tu gusto', run: () => this.slidersCard('Grosor del borrador', [{ label: 'Grosor', min: 2, max: 80, step: 1, value: pv.eraserW, set: v => { pv.eraserW = v; pv.saveTool(); } }]) },

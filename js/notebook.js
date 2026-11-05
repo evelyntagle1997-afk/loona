@@ -1,7 +1,7 @@
 // Lado cuaderno: páginas con tinta, lettering, cintas, stickers, fotos
 // y los resúmenes que llegan desde el PDF.
 import * as db from './db.js';
-import { h, icon, iconBtn, INKS, LEVELS, levelOf, toast, modal, pickFile, confirmBox, clamp, esc, debounce, kineticPan } from './ui.js';
+import { h, icon, iconBtn, INKS, LEVELS, levelOf, toast, modal, pickFile, confirmBox, clamp, esc, debounce, kineticPan, colorRow } from './ui.js';
 import { drawStroke, hitStroke, PENS } from './ink.js';
 import { STICKERS, stickerURL, recommend, LOONA_STICKERS } from './stickers.js';
 import { TAPE_PATTERNS, TAPE_COLORS, tapeStyle, TORN_MASK } from './tapes.js';
@@ -18,7 +18,7 @@ const PAPERS = [
   { k: 'puntos', name: 'Puntos' }, { k: 'cuadricula', name: 'Cuadrícula' }, { k: 'rayas', name: 'Rayas' },
   { k: 'liso', name: 'Liso' }, { k: 'cornell', name: 'Cornell' },
 ];
-const PAPER_TONES = [{ k: 'negro', c: '#111112' }, { k: 'humo', c: '#2b2b2e' }, { k: 'crema', c: '#FBF5EC' }, { k: 'blanco', c: '#FFFDF9' }, { k: 'rosa', c: '#F8EDEB' }, { k: 'kraft', c: '#E9D9C2' }];
+const PAPER_TONES = [{ k: 'negro', c: '#1d130e' }, { k: 'humo', c: '#3a271d' }, { k: 'crema', c: '#FBF5EC' }, { k: 'blanco', c: '#FFFDF9' }, { k: 'rosa', c: '#F8EDEB' }, { k: 'kraft', c: '#E9D9C2' }];
 const BLOCKS = [
   { k: 'titulo', name: 'Título con lettering', html: 'Mi tema', w: 520 },
   { k: 'gotico', name: 'Título gótico', html: 'Historia', w: 560 },
@@ -269,7 +269,7 @@ export class Notebook {
     if (INK_TOOLS.includes(t)) {
       const st = this.pen[t];
       o.append(
-        h('div', { class: 'swatches' }, ...INKS.map(c => h('button', { class: 'sw-c' + (c === st.c ? ' on' : ''), style: { '--c': c }, 'aria-label': 'Color ' + c, onclick: () => { st.c = c; this.saveTool(); this.renderOpts(); } }))),
+        colorRow(INKS, st.c, c => { st.c = c; this.saveTool(); }),
         h('label', { class: 'opt-range' }, 'Grosor', h('input', { type: 'range', min: ['marker', 'glitter'].includes(t) ? 4 : .5, max: ['marker', 'glitter'].includes(t) ? 48 : t === 'brush' ? 30 : 14, step: .5, value: st.w, oninput: e => { st.w = +e.target.value; this.saveTool(); } })),
         h('label', { class: 'opt-range' }, 'Intensidad', h('input', { type: 'range', min: .1, max: 1, step: .05, value: st.a ?? 1, oninput: e => { st.a = +e.target.value; this.saveTool(); } })),
         this.toggle('Solo lápiz dibuja', this.penOnly, v => { this.penOnly = v; this.saveTool(); this.updateRail(); }),
@@ -303,7 +303,7 @@ export class Notebook {
     return [
       fontBtn,
       h('label', { class: 'opt-range' }, 'Tamaño', h('input', { type: 'range', min: 12, max: 120, value: st.size, oninput: e => { st.size = +e.target.value; onChange(); } })),
-      h('div', { class: 'swatches' }, ...INKS.map(c => h('button', { class: 'sw-c' + (c === st.color ? ' on' : ''), style: { '--c': c }, 'aria-label': 'Color ' + c, onclick: e => { st.color = c; onChange(); e.target.parentElement.querySelectorAll('.sw-c').forEach(b => b.classList.toggle('on', b === e.target)); } }))),
+      colorRow(INKS, st.color, c => { st.color = c; onChange(); }),
       h('div', { class: 'style-chips' }, ...STYLES.map(s => h('button', { class: 'chip lt-' + s.k + (s.k === st.style ? ' on' : ''), style: { '--tc': st.color }, onclick: e => { st.style = s.k; onChange(); e.target.parentElement.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b === e.target)); } }, s.name))),
     ];
   }

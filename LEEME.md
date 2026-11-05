@@ -224,3 +224,9 @@ Usa **Cloudflare Pages**: dash.cloudflare.com → Workers & Pages → Create →
 - Agenda en cuero chocolate; tapa, luna, nota del clip y pestaña activa con estampado de vaca (`img/vaca.webp`).
 - Ventanas, avisos, HUD y cuestionarios en crema con texto café espresso.
 - Láminas de IA: hoja crema con franja de estampado de vaca, tarjetas crema con borde de vaca, esquema sobre café espresso, tabla y notas café. El prompt de la IA pide la paleta crema/café/caramelo/tostado.
+
+## v122 — Colores libres y editor en vaca gótica
+- Error corregido: los 5 colores del PDF eran grises casi iguales (no se podía usar más de un color). Ahora cada herramienta (resaltador, línea, raya finita, lápiz) guarda su propio color y cada marca guarda el suyo.
+- Paleta visible que combina con la vaca: miel, caramelo, durazno, rosa vaca, terracota, vino, salvia, turquesa, denim, lavanda, chocolate, espresso + «＋» para elegir cualquier color (se recuerdan tus colores). También en el cuaderno, la rueda y la barra de selección.
+- Grosor e intensidad ajustables; resaltado más visible por defecto. La importancia (para el resumen) va aparte del color.
+- Pantalla de estudio, rueda, temporizador, reproductor y papel del cuaderno en cuero chocolate con detalles de vaca.

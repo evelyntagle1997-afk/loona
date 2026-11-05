@@ -8,9 +8,37 @@ export const LEVELS = [
   { n: 5, name: 'Para repasar', short: 'Repasar', color: '#C9CED6', soft: 'rgba(201,206,214,.55)' },
 ];
 export const levelOf = n => LEVELS.find(l => l.n === n) || LEVELS[1];
+// colores de resaltador y subrayado (de verdad distintos) + los de tu estilo vaca gótica
+export const HL_COLORS = ['#F4C430', '#E39B4F', '#F2A07B', '#F28FA8', '#D2573C', '#A33B4A', '#8DBF7A', '#4FB3A9', '#5B8DD9', '#A88BD8', '#6B3E26', '#2B1A1E'];   // miel, caramelo, durazno, rosa vaca, terracota, vino, salvia, turquesa, denim, lavanda, chocolate, espresso
+// colores que tú elegiste con «Otro color» (se recuerdan)
+export const myColors = () => { try { return JSON.parse(localStorage.getItem('myColors')) || []; } catch { return []; } };
+export function addMyColor(c) { const a = [c, ...myColors().filter(x => x.toLowerCase() !== c.toLowerCase())].slice(0, 8); try { localStorage.setItem('myColors', JSON.stringify(a)); } catch { } return a; }
+// abre el selector de color del sistema (cualquier color) y lo guarda en «tus colores»
+export function pickColor(cur = '#FFE066') {
+  return new Promise(res => {
+    const i = document.createElement('input'); i.type = 'color'; i.value = /^#[0-9a-f]{6}$/i.test(cur) ? cur : '#FFE066';
+    Object.assign(i.style, { position: 'fixed', left: '50%', top: '50%', opacity: 0, width: '1px', height: '1px' });
+    document.body.append(i);
+    let done = false; const fin = v => { if (done) return; done = true; i.remove(); if (v) addMyColor(v); res(v); };
+    i.addEventListener('change', () => fin(i.value)); i.addEventListener('blur', () => setTimeout(() => fin(null), 400));
+    i.click();
+  });
+}
+// fila de colores: los de la paleta + los tuyos + «＋» para elegir cualquiera
+export function colorRow(list, cur, set) {
+  const row = h('div', { class: 'swatches color-row' });
+  const paint = c => { cur = c; [...row.children].forEach(b => b.classList.toggle('on', b.dataset.c && b.dataset.c.toLowerCase() === (c || '').toLowerCase())); };
+  const draw = () => {
+    const all = [...new Set([...list, ...myColors()].map(c => c.toUpperCase()))];
+    row.replaceChildren(...all.map(c => h('button', { class: 'sw-c', 'data-c': c, style: { '--c': c }, 'aria-label': 'Color ' + c, onclick: () => { set(c); paint(c); } })),
+      h('button', { class: 'sw-c sw-plus', title: 'Otro color (cualquiera)', 'aria-label': 'Elegir otro color', onclick: async () => { const c = await pickColor(cur); if (c) { set(c); draw(); paint(c); } } }, '+'));
+    paint(cur);
+  };
+  draw(); return row;
+}
 
 // Tintas del cuaderno: borgoñas, marrones y neutros cálidos
-export const INKS = ['#F4F1EE', '#D9D5D7', '#B2ADB0', '#8A8588', '#5E5A5D', '#2A2729', '#0D0C0D', '#C77A3A', '#E6B98A', '#9B7A5A', '#BFC6C9', '#FFFFFF'];
+export const INKS = ['#F4F1EE', '#D9D5D7', '#B2ADB0', '#8A8588', '#5E5A5D', '#2A2729', '#0D0C0D', '#C77A3A', '#E6B98A', '#9B7A5A', '#BFC6C9', '#FFFFFF', '#E5484D', '#FF8FB1', '#FFB347', '#FFE066', '#7BE495', '#5EEAD4', '#6EC1FF', '#B48CFF', '#C08A5B', '#8A5A3C', '#2E1B14'];
 
 export const COVERS = [
   { id: 'azabache', base: '#0E0D0E', hi: '#2C292B' },
