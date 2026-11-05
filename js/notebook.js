@@ -1035,7 +1035,7 @@ export class Notebook {
     const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.innerText.trim(); };
     const ta = h('textarea', { class: 'field tf-text', rows: 5, placeholder: 'Escribe o pega aquí lo que quieres transformar (o selecciona un texto del cuaderno antes de abrir esto).' }, selEl ? plain(selEl.html) : '');
     const title = h('input', { class: 'field', placeholder: 'Título (opcional)' });
-    let tpl = 'diario', theme = themeOf(this.subject?.name), items = null, aiTitle = '';
+    let tpl = 'ola', theme = themeOf(this.subject?.name), items = null, aiTitle = '';
     const preview = h('div', { class: 'tf-prev' });
     const local = () => (ta.value.split(/(?<=[.!?;])\s+|\n+/).map(x => x.trim()).filter(x => x.length > 3).slice(0, 18))
       .map((t, i) => { const cat = classify(t, 2); return { hl: 'tf' + i, cat, level: 2, text: condense(t, cat, 22) }; });
@@ -1058,7 +1058,7 @@ export class Notebook {
     draw();
     modal({ title: 'Transformar con plantilla', wide: true, body: h('div', { class: 'tf' },
       h('div', { class: 'tf-side' }, ta, title,
-        h('p', { class: 'opt-hint' }, 'Cómo se ve'), pick([['diario', 'Diario con borde'], ['mapa', 'Mapa conceptual'], ['poster', 'Póster']], tpl, v => tpl = v),
+        h('p', { class: 'opt-hint' }, 'Cómo se ve'), pick([['ola', 'Ola azul (modelo)'], ['mapa', 'Mapa conceptual'], ['poster', 'Póster']], tpl, v => tpl = v),
         h('p', { class: 'opt-hint' }, 'Ilustraciones'), pick([['bio', 'Biología'], ['quim', 'Química'], ['gen', 'Luna y polillas']], theme, v => theme = v),
         aiBtn),
       h('div', { class: 'tf-right' }, h('p', { class: 'opt-hint' }, 'Vista previa (así quedará en tu hoja)'), preview)),
@@ -1225,18 +1225,23 @@ export class Notebook {
   }
 
   summaryDom(pg, el) {
-    const tpl = el.tpl || 'diario', theme = el.theme || themeOf(this.subject?.name);
+    // modelo por defecto: «ola» (hoja negra, olas azules, título en letras de burbuja); los otros siguen disponibles
+    const tpl = el.tpl && el.tpl !== 'diario' ? el.tpl : 'ola', theme = el.theme || themeOf(this.subject?.name);
+    const ola = tpl === 'ola';
     const root = h('div', { class: 'sum lay-' + (el.layout || 'dos') + ' tpl-' + tpl + ' th-' + theme });
-    root.append(h('i', { class: 'sum-strip l', 'aria-hidden': 'true' }));
-    if (tpl === 'poster') root.append(h('i', { class: 'sum-strip r', 'aria-hidden': 'true' }));
-    root.append(h('img', { class: 'sum-hero', src: 'img/hero-' + theme + '.webp', alt: '', draggable: false }));   // ilustración grande del tema
+    if (ola) root.append(h('img', { class: 'ola-top', src: 'img/ola-top.webp', alt: '', draggable: false, 'aria-hidden': 'true' }));
+    else {
+      root.append(h('i', { class: 'sum-strip l', 'aria-hidden': 'true' }));
+      if (tpl === 'poster') root.append(h('i', { class: 'sum-strip r', 'aria-hidden': 'true' }));
+      root.append(h('img', { class: 'sum-hero', src: 'img/hero-' + theme + '.webp', alt: '', draggable: false }));   // ilustración grande del tema
+    }
     const sub = this.subject;
     root.style.setProperty('--sc', sub?.coverColor || '#7A2B3A');
     root.style.setProperty('--neo', el.theme ? NEON_TH[el.theme] : neonOf(sub?.name));   // brillo neón: plata por defecto; color solo si el tema lo pide
-    const tf = el.titleFont || this.nb.titleFont || 'Grenze Gotisch'; ensureFont(tf);
+    const tf = el.titleFont || (ola ? 'Pacifico' : this.nb.titleFont || 'Grenze Gotisch'); ensureFont(tf); if (ola) ensureFont('Kalam');
     if (!el.cont && el.title) {
       // título: máximo ~5 cm de alto (270 px de hoja); se achica solo y lo puedes ajustar deslizando la esquina
-      const MAXH = 270, base = 46;
+      const MAXH = ola ? 150 : 270, base = ola ? 58 : 46;
       const t = h('div', { class: 'sum-title', 'data-edit': 'title' }, el.title);
       t.style.fontFamily = `'${tf}', 'Pirata One', serif`;
       const setK = k => { t.style.setProperty('font-size', Math.round(base * k) + 'px', 'important'); };
@@ -1260,19 +1265,22 @@ export class Notebook {
     const body = h('div', { class: 'sum-body' });
     for (const g of grouped(el.items)) {
       body.append(h('section', { class: 'sum-sec cat-' + g.k },
-        h('h4', { class: 'sum-h' }, g.label),
+        h('h4', { class: 'sum-h' }, ola ? (OLA_Q[g.k] || g.label) : g.label),
         h('ul', {}, ...g.list.map(it => h('li', { class: 'lv' + it.level, 'data-hl': it.hl, style: { '--lc': levelOf(it.level).color } },
           h('span', { 'data-edit': 'item:' + it.hl, html: fmtItem(it.text) }))))));
     }
     if (!el.items.length && !el.cont) body.append(h('p', { class: 'sum-empty' }, 'Subraya en el PDF y aquí aparece el resumen ordenado.'));
     root.append(body);
+    const foot = ola ? h('div', { class: 'ola-foot' }, h('img', { class: 'ola-big', src: 'img/ola-big.webp', alt: '', draggable: false, 'aria-hidden': 'true' })) : root;
+    if (ola) root.append(foot);
     if (el.ai && (el.ai.explicacion || el.ai.analogia)) {
-      root.append(h('div', { class: 'sum-ai' },
+      foot.append(h('div', { class: 'sum-ai' },
         el.ai.explicacion && h('div', { class: 'ai-box exp' }, h('b', {}, 'En palabras simples'), h('p', { 'data-edit': 'ai:explicacion' }, el.ai.explicacion)),
         el.ai.analogia && h('div', { class: 'ai-box ana' }, h('b', {}, 'Imagínalo así'), h('p', { 'data-edit': 'ai:analogia' }, el.ai.analogia)),
         el.ai.mnemotecnia && h('div', { class: 'ai-box mne' }, h('b', {}, 'Truco para recordar'), h('p', { 'data-edit': 'ai:mnemotecnia' }, el.ai.mnemotecnia)),
       ));
     }
+    if (ola) root.append(h('span', { class: 'ola-sign' }, '@loona·' + (this.subject?.name || 'apuntes').toLowerCase().replace(/\s+/g, '')));
     if (el.ai?.preguntas?.length) root.append(h('details', { class: 'sum-quiz' }, h('summary', {}, `Repaso (${el.ai.preguntas.length} preguntas)`),
       ...el.ai.preguntas.map(q => h('details', { class: 'q' }, h('summary', {}, q.q), h('p', {}, q.a)))));
 
@@ -1363,3 +1371,5 @@ export function themeOf(name = '') {
   return 'gen';
 }
 const NEON_TH = { bio: '#E9E9EC', quim: '#E9E9EC', gen: '#E9E9EC' };
+// en el modelo «ola» los subtítulos son preguntas, como en un cuaderno a mano
+const OLA_Q = { definicion: '¿Qué es?', caracteristicas: '¿Cómo es?', tipos: '¿Qué tipos hay?', funcion: '¿Para qué sirve?', como: '¿Cómo funciona?', cuando: '¿Cuándo?', donde: '¿Dónde?', quien: '¿Quién?', porque: '¿Por qué?', consecuencias: '¿Qué provoca?', datos: 'Datos clave', ejemplos: 'Ejemplos', ideas: 'Ideas clave' };

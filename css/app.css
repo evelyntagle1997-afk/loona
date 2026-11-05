@@ -1811,3 +1811,46 @@ body:has(.ag-home) #loona-fab { display: none !important; }
 @media (orientation: portrait) {
   .home.ag-home .agenda { width: min(100%, calc((100dvh - 16px) * 1.7778)) !important; min-width: 0 !important; }
 }
+
+/* ============ v101: modelo «ola» de los resúmenes (hoja negra, olas azules, letras de burbuja) ============ */
+.sum.tpl-ola { --o1: #0b2a6f; --o2: #1d4ed8; --o3: #3b82f6; --o4: #7cc4ff; --o5: #dff1ff;
+  background: radial-gradient(circle at 18% 30%, rgba(124,196,255,.10) 0 1px, transparent 1.6px) 0 0 / 46px 46px, radial-gradient(circle at 70% 60%, rgba(255,255,255,.07) 0 1px, transparent 1.5px) 0 0 / 61px 61px, #000 !important;
+  box-shadow: 0 0 0 1px #16233f, 0 18px 40px -18px rgba(0,0,0,.8) !important; border-radius: 6px !important;
+  padding: 0 0 18px !important; overflow: hidden; position: relative; color: #F4F7FB; }
+.sum.tpl-ola .ola-top { display: block; width: 100%; height: auto; margin: 0 0 6px; mix-blend-mode: lighten; pointer-events: none; user-select: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 12%, #000 86%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0, #000 12%, #000 86%, transparent 100%); }
+/* título: letras de burbuja blancas con borde azul y sombra marino, centrado sobre la ola */
+.sum.tpl-ola .sum-title { position: absolute !important; z-index: 3; top: 4%; left: 50%; translate: -50% 0; display: block; width: max-content; max-width: 88% !important; margin: 0 !important; text-align: center !important;
+  font-family: 'Pacifico', 'Dancing Script', cursive !important; font-weight: 400 !important; line-height: 1.15 !important; letter-spacing: .01em !important;
+  color: #fff !important; -webkit-text-fill-color: #fff !important; -webkit-text-stroke: .16em var(--o2) !important; paint-order: stroke fill;
+  text-shadow: .05em .07em 0 var(--o1), .09em .12em 0 #06173f, 0 0 .5em rgba(124,196,255,.35) !important; transform: rotate(-3deg) !important; }
+.sum.tpl-ola .sum-body { display: block !important; columns: auto !important; padding: 0 7% !important; position: relative; z-index: 2; }
+.sum.tpl-ola .sum-sec { background: none !important; border: 0 !important; outline: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 0 14px !important; break-inside: avoid; }
+.sum.tpl-ola .sum-sec::before, .sum.tpl-ola .sum-sec::after { display: none !important; content: none !important; }
+.sum.tpl-ola .sum-h { font-family: 'Pacifico', 'Dancing Script', cursive !important; font-weight: 400 !important; font-size: 25px !important; letter-spacing: 0 !important; text-transform: none !important;
+  color: var(--o4) !important; -webkit-text-fill-color: var(--o4) !important; text-shadow: 0 0 8px rgba(124,196,255,.35) !important; margin: 0 0 4px !important; padding: 0 !important; border: 0 !important; background: none !important; }
+.sum.tpl-ola .sum-h::after { content: ' ✦'; font-family: system-ui, sans-serif; font-size: .55em; color: var(--o5); vertical-align: super; }
+.sum.tpl-ola .sum-sec ul { list-style: none !important; margin: 0 !important; padding: 0 !important; }
+.sum.tpl-ola .sum-sec li, .sum.tpl-ola .sum-sec li span { font-family: 'Kalam', 'Patrick Hand', cursive !important; font-weight: 400; font-size: 18px !important; line-height: 1.5 !important; color: #F4F7FB !important; }
+.sum.tpl-ola .sum-sec li { padding-left: 16px !important; position: relative; margin: 0 0 3px; background: none !important; border: 0 !important; }
+.sum.tpl-ola .sum-sec li::before { content: '' !important; position: absolute; left: 2px; top: .68em; width: 6px; height: 6px; border-radius: 50%; background: var(--o3) !important; box-shadow: 0 0 6px var(--o3); }
+.sum.tpl-ola .sum-sec li.lv1, .sum.tpl-ola .sum-sec li.lv1 span { font-weight: 700 !important; }
+/* palabras clave: resaltado azul como marcador, con letra blanca */
+.sum.tpl-ola .sum-sec li b, .sum.tpl-ola .sum-sec li strong { color: #fff !important; -webkit-text-fill-color: #fff !important; text-decoration: none !important; font-weight: 700;
+  background: linear-gradient(100deg, transparent 0 2px, var(--o2) 2px calc(100% - 3px), transparent calc(100% - 3px)) !important; padding: 0 .3em; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.sum.tpl-ola .sum-sec.cat-datos { border: 1.5px dashed var(--o3) !important; border-radius: 10px !important; padding: 8px 12px !important; }
+.sum.tpl-ola .sig { color: var(--sig) !important; }
+/* pie: la gran ola a la izquierda y las notas al lado */
+.sum.tpl-ola .ola-foot { display: grid; grid-template-columns: 46% 1fr; align-items: end; gap: 4%; margin: 6px 0 0; position: relative; z-index: 1; }
+.sum.tpl-ola .ola-big { width: 100%; height: auto; mix-blend-mode: lighten; margin-left: -4%; pointer-events: none; user-select: none;
+  -webkit-mask-image: radial-gradient(120% 100% at 30% 100%, #000 55%, transparent 78%); mask-image: radial-gradient(120% 100% at 30% 100%, #000 55%, transparent 78%); }
+.sum.tpl-ola .sum-ai { display: flex !important; flex-direction: column; gap: 10px; padding: 0 7% 10% 0 !important; background: none !important; border: 0 !important; }
+.sum.tpl-ola .ai-box { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+.sum.tpl-ola .ai-box b { display: block; font-family: 'Pacifico', cursive !important; font-weight: 400 !important; font-size: 18px; color: var(--o4) !important; text-transform: none !important; letter-spacing: 0 !important; }
+.sum.tpl-ola .ai-box p { font-family: 'Kalam', cursive !important; font-size: 16px !important; line-height: 1.4; color: #E8F1FB !important; margin: 2px 0 0; }
+.sum.tpl-ola .ai-box.mne p { color: var(--o5) !important; }
+.sum.tpl-ola .ola-sign { position: absolute; right: 18px; bottom: 8px; font-family: 'Kalam', cursive; font-size: 12px; color: rgba(124,196,255,.7); z-index: 2; }
+.sum.tpl-ola .sum-quiz { margin: 8px 7% 0 !important; background: none !important; border: 1px dashed rgba(124,196,255,.45) !important; color: #E8F1FB !important; font-family: 'Kalam', cursive; }
+.sum.tpl-ola .sum-empty { color: var(--o4) !important; font-family: 'Kalam', cursive; padding: 0 7%; }
+.sum.tpl-ola .sum-cont { font-family: 'Pacifico', cursive !important; color: var(--o4) !important; padding: 14px 7% 6px; }
+.sum.tpl-ola .sum-title-grip { background: var(--o4) !important; }
