@@ -2008,7 +2008,7 @@ html.lite .sum.tpl-lamina .lam-big { animation: none !important; }
 .game-hud { display: flex; align-items: center; gap: 10px; border: 1.5px solid #3a3a3e; background: linear-gradient(180deg, #18181a, #0e0e10); color: #F5F5F5; border-radius: 14px; padding: 6px 12px 6px 6px; cursor: pointer; text-align: left; box-shadow: 0 8px 20px -10px rgba(0,0,0,.9); }
 .game-hud .hud-lv { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 800 15px system-ui, sans-serif; color: #fff; background: radial-gradient(circle at 35% 30%, #ff5a62, #D4202C 60%, #6a0a10); box-shadow: 0 0 0 2px #000, 0 0 0 3px #C9CED6; flex: none; }
 .game-hud .hud-txt { display: flex; flex-direction: column; gap: 3px; min-width: 150px; }
-.game-hud .hud-nm { font-family: 'Pacifico', cursive; font-size: 13px; line-height: 1; }
+.game-hud .hud-nm { font: 600 12.5px/1 system-ui, sans-serif; letter-spacing: .02em; }
 .hud-bar { display: block; height: 6px; border-radius: 3px; background: #2a2a2e; overflow: hidden; }
 .hud-bar > i { display: block; height: 100%; background: linear-gradient(90deg, #C9CED6, #D4202C); transition: width .6s var(--ease-out, ease); }
 .hud-bar.big { height: 10px; border-radius: 5px; margin: 4px 0; }
